@@ -1,18 +1,20 @@
+import re
+
 from yt_dlp import YoutubeDL
 import subprocess
 
 import math
 import os
-from pydub import AudioSegment
 
 
 class AudioFile:
     """    """
-    def __init__(self, s):
+    def __init__(self, s, duration):
         self.filename = s
         self.ext = self.filename[s.index('.'):]
         self.folder_name = self.filename[:s.index('.')] + '\\'
         self.abs_filename = f'C:\\Users\\dondu\\OneDrive\\Documents\\GitHub\\dyplom\\{self.filename}'
+        self.duration = duration
         self.create_folder()
 
     def create_folder(self):
@@ -31,8 +33,8 @@ class AudioFile:
     def convert_and_split(self, abs_filename):
         """abs_filename"""
         splits = []
-        length = get_length(abs_filename)
-        total_mins = math.ceil(length / 60)
+
+        total_mins = math.ceil(self.duration/ 60)
         #folder_name = self.abs_filename[:abs_filename.index('.')] + '\\'
         counter = 0
         try:
@@ -54,64 +56,34 @@ class AudioFile:
             print("Конвертирование и разделение прошло успешно")
             return splits
 
-
-
-
-class SplitWavAudioMubin():
-    def __init__(self, folder, filename):
-        self.folder = folder
-        self.filename = filename
-        self.filepath = folder + '\\' + filename
-
-        self.audio = AudioSegment.from_wav(self.filepath)
-
-    def get_duration(self):
-        return self.audio.duration_seconds
-
-    def single_split(self, from_min, to_min, split_filename):
-        t1 = from_min * 60 * 1000
-        t2 = to_min * 60 * 1000
-        split_audio = self.audio[t1:t2]
-        split_audio.export(self.folder + '\\' + split_filename, format="wav")
-
-    def multiple_split(self, min_per_split):
-        total_mins = math.ceil(self.get_duration() / 60)
-        list_splits = []
-        for i in range(0, total_mins, min_per_split):
-            split_fn = str(i) + '_' + self.filename
-            self.single_split(i, i + min_per_split, split_fn)
-            split_fn = self.folder + '\\' + str(i) + '_' + self.filename
-            list_splits.append(split_fn)
-            print(str(i) + ' Done')
-            if i == total_mins - min_per_split:
-                print('All splited successfully')
-                return list_splits
-
 def download_audio(link):
     if link.__contains__('youtube'):
+        with (YoutubeDL()) as ydl:
+            info_dict = ydl.extract_info(link, download=False)
+            title = info_dict['title']
+            right_title = check_title(title)
+
         with (YoutubeDL({'extract_audio': True, 'format': 'bestaudio/best',
                         'postprocessors':[{
                            'key':'FFmpegExtractAudio',
                             'preferredcodec':'wav',
                             'preferredquality':'192',
                         }],
-                        'outtmpl': '%(title)s',
+                        'outtmpl': right_title,
                         }) as YT):
-        #    YT.download(link)
 
             #информация о видео по ссылке
             info_dict = YT.extract_info(link, download = False)
+        return right_title +'.wav', info_dict['duration']
 
-            print(info_dict['title'])
-            s = info_dict['title'].replace('.', '')
-            s = s.replace('?', '')
-            s = s.replace('|', '')
-            s = s.replace('  ', '_')
-            s = s.replace(' ', '_')
-            print(s)
-            os.rename(info_dict['title']+'.wav', s+'.wav')
-            return s + '.wav'
 
+def check_title(title):
+    title = title.replace(' ', '_')
+    title = re.sub(r'[^\w]' , '_', title)
+    title = re.sub(r'_{2,}' , '_', title)
+    title = re.sub(r'_$' , '', title)
+
+    return title
 
 def get_length(input_video):
     result = subprocess.run(
