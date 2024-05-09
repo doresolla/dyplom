@@ -1,54 +1,52 @@
 import text, audio, os
 import whisper
-
-class Model:
-    def __init__(self, type):
-        self.model = whisper.load_model(type)
-
-
-def recognizeSpeech(audioname, model):
-    filename = audioname[:audioname.rindex('\\')] + audioname[
-                                                    audioname.rindex('_') + 1:audioname.rindex('.')] + '.txt'
-    print('Start', audioname[audioname.rindex('\\') + 1:])
-    result = model.transcribe(audioname, fp16=False)
-    # model_base = whisper.load_model("large-v2")
-
-    # файл с расшифровкой речи
-    # Если такого файла не существует
-    if not (os.path.isfile(filename)):
-        param = 'w'  # создать файл и записать в него
-    else:
-        param = 'a+'  # добавить данные в конец файла
-
-    file = open(filename, param)
-    file.write(result['text'] + '\n')
-    file.close()
-    print("End", audioname[audioname.rindex('\\') + 1:])
-
+import chardet
+import torch
+from string import punctuation
 
 if __name__ == '__main__':
+    link = 'https://www.youtube.com/watch?v=6dYPBA7-1Wg'
+    is_here = True
+    if not (is_here):
+        filename, duration, chapters = audio.download_audio(link, False)
+        file = audio.AudioFile(filename, duration, chapters)
+        files = file.convert_and_split(file.abs_filename)
+        print(files)
 
-
-    filename, duration = audio.download_audio('https://www.youtube.com/watch?v=yeywgGUs7T0')
-    print(duration)
-    file = audio.AudioFile(filename, duration)
-    files = file.convert_and_split(file.abs_filename)
-
-    main = Model("base")
-
-    for f in files:
+        torch.cuda.is_available()
+        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+        model = whisper.load_model("base", DEVICE, in_memory=True )
         try:
-            recognizeSpeech(f, main.model)
+            file.recognizeSpeech(files, model)
         except Exception as e:
+            print('Ошибка при распознавании голоса')
             print(e)
         else:
-            print("Recognition successfully Ended")
+            print("Распознавание прошло успешно")
+    else:
+        name = 'СШГЭС_4_Авария.wav'
+        file_audio = audio.AudioFile(name, 843, [] )
+        name = file_audio.folder_name + '\\' + file_audio.filename.replace(file_audio.ext, '.txt')
+        print(name)
+        with open(name, 'rb') as f:
+            data = f.read(1000)
+            f.seek(0, os.SEEK_END)
+            bytes = f.tell()
+            print("Размер текстового файла", bytes)
 
-    recognized_text = 
-
-    text_to_tokenize = ["Это кот съел все конфеты!", "Кот также съел это мясо"]
-    text_to_tokenize = [sen.lower() for sen in text_to_tokenize]
-    eng = ['This cat ate all sweets!', 'The cat also ate this meat']
-    text.tokenize(text_to_tokenize)
-
+        # Detect the encoding of the data
+        result = chardet.detect(data)
+        print(result['encoding'])
+        recognized_text = ''
+        with open(name, encoding=result['encoding']) as file_text:
+            chunk = file_text.read(10000)
+            while chunk:
+                recognized_text = recognized_text + chunk
+                chunk = file_text.read(10000)
+        print(recognized_text)
+        text.read_subs(file_audio.folder_name)
+        # prep = text.preprocess()
+        # sents, tokens = prep.sent_vector(recognized_text)
+        # print(sents, end = '\n')
+        # print(tokens, end = ' ')
 
