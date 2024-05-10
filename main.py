@@ -24,29 +24,30 @@ if __name__ == '__main__':
         else:
             print("Распознавание прошло успешно")
     else:
-        name = 'СШГЭС_4_Авария.wav'
-        file_audio = audio.AudioFile(name, 843, [] )
-        name = file_audio.folder_name + '\\' + file_audio.filename.replace(file_audio.ext, '.txt')
-        print(name)
-        with open(name, 'rb') as f:
-            data = f.read(1000)
-            f.seek(0, os.SEEK_END)
-            bytes = f.tell()
-            print("Размер текстового файла", bytes)
-
-        # Detect the encoding of the data
-        result = chardet.detect(data)
-        print(result['encoding'])
-        recognized_text = ''
-        with open(name, encoding=result['encoding']) as file_text:
-            chunk = file_text.read(10000)
-            while chunk:
-                recognized_text = recognized_text + chunk
-                chunk = file_text.read(10000)
-        print(recognized_text)
-        text.read_subs(file_audio.folder_name)
-        # prep = text.preprocess()
-        # sents, tokens = prep.sent_vector(recognized_text)
-        # print(sents, end = '\n')
-        # print(tokens, end = ' ')
-
+        table = []
+    #     name = 'СШГЭС_4_Авария.wav'
+    #     file_audio = audio.AudioFile(name, 843, [] )
+    #     name = file_audio.folder_name + '\\' + file_audio.filename.replace(file_audio.ext, '.txt')
+    #     print(name)
+    #     with open(name, 'rb') as f:
+    #         data = f.read(1000)
+    #         f.seek(0, os.SEEK_END)
+    #         bytes = f.tell()
+    #         print("Размер текстового файла", bytes)
+    #
+    #     # Detect the encoding of the data
+    #     result = chardet.detect(data)
+    #     print(result['encoding'])
+    #     recognized_text = ''
+    #     with open(name, encoding=result['encoding']) as file_text:
+    #         chunk = file_text.read(10000)
+    #         while chunk:
+    #             recognized_text = recognized_text + chunk
+    #             chunk = file_text.read(10000)
+    #     print(recognized_text)
+    #     text.read_subs(file_audio.folder_name)
+    #     # prep = text.preprocess()
+    #     # sents, tokens = prep.sent_vector(recognized_text)
+    #     # print(sents, end = '\n')
+    #     # print(tokens, end = ' ')
+    #
