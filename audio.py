@@ -3,7 +3,7 @@ import whisper
 import operator
 from yt_dlp import YoutubeDL
 import subprocess
-
+import requests
 import math
 import os
 
@@ -30,7 +30,11 @@ class AudioFile:
         elif not (os.path.isfile(dest_folder + self.filename)):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename, dest_folder + self.filename)
-            os.replace(current_dir+'\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
+            try:
+                os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
+            except Exception as e:
+                print("Ошибка при перемещении файла tmp\\sub.srt.ru.vtt ")
+                print(e)
             self.abs_filename = dest_folder + self.filename
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
@@ -107,18 +111,31 @@ def download_audio(link, to_download):
     list_langs = []
     if link.__contains__('youtube'):
         with (YoutubeDL({
+            #automatic_captions =
             'writeautomaticsub': True,
             'subtitlesformat': 'srt',
+
+            'subtitleslangs': 'ru, en',
             'skip_download': True,
-            'subtitleslangs':['ru'],
-            'outtmpl': '/tmp/sub.srt'
+             'outtmpl': '/tmp/sub.srt'
         })) as ydl:
             if to_download:
                 ydl.download(link)
             info_dict = ydl.extract_info(link, download=False)
+            if info_dict['requested_subtitles'] and info_dict['requested_subtitles']['ru']:
+                print('Grabbing vtt file from ' + info_dict['requested_subtitles']['ru']['url'])
+                response = requests.get(info_dict['requested_subtitles']['ru']['url'], stream=True)
+                f1 = open("testfile01.txt", "w")
+                f1.write(response.text)
+                f1.close()
+                if len(info_dict['subtitles']) > 0:
+                    print('manual captions')
+                else:
+                    print('automatic_captions')
+
             #разделение на главы (end_time, start_time, title)
-            if ('chapters' in info_dict):
-                chapters = info_dict['chapters']
+            # if ('chapters' in info_dict):
+            #     chapters = info_dict['chapters']
             right_title = check_title(info_dict['title'])
         with (YoutubeDL({'extract_audio': True, 'format': 'bestaudio/best',
                          'postprocessors': [{
@@ -132,7 +149,10 @@ def download_audio(link, to_download):
             if to_download:
                 YT.download(link)
             info_dict = YT.extract_info(link, download=False)
-        return right_title + '.wav', info_dict['duration'], chapters
+            chapters = []
+            if ('chapters' in info_dict):
+                chapters = info_dict['chapters']
+            return right_title + '.wav', info_dict['duration'], chapters
 
 
 def check_title(title):
@@ -162,10 +182,10 @@ def split_video(file_path:str, start:int, end:int, output_path:str):
     subprocess.call(command, shell=True)
 
 
-def cut_video( filename, duration ):
-    start_time = duration//10
-    end_time = start_time + 30
-    command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -c copy {output_path}"
-
-    cmd =['ffmpeg','-i', ]
+# def cut_video( filename, duration ):
+#     start_time = duration//10
+#     end_time = start_time + 30
+#     command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -c copy {output_path}"
+#
+#     cmd =['ffmpeg','-i', ]
 
