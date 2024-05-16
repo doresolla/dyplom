@@ -74,5 +74,6 @@ def read_subs(folder):
 
     with open(new_file, 'w') as new_file:
         new_file.write(new_text)
+        print('сохранено')
 
 
