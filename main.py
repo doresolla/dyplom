@@ -1,8 +1,8 @@
-import text, audio, os
+import audio
+from text import Text, read_subs
 import whisper
-import chardet
 import torch
-from string import punctuation
+
 
 if __name__ == '__main__':
     link = 'https://www.youtube.com/watch?v=6dYPBA7-1Wg'
@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
         torch.cuda.is_available()
         DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-        model = whisper.load_model("base", DEVICE, in_memory=True )
+        model = whisper.load_model("small", DEVICE, in_memory=True )
         try:
             file.recognizeSpeech(files, model)
         except Exception as e:
@@ -24,30 +24,12 @@ if __name__ == '__main__':
         else:
             print("Распознавание прошло успешно")
     else:
-        table = []
-    #     name = 'СШГЭС_4_Авария.wav'
-    #     file_audio = audio.AudioFile(name, 843, [] )
-    #     name = file_audio.folder_name + '\\' + file_audio.filename.replace(file_audio.ext, '.txt')
-    #     print(name)
-    #     with open(name, 'rb') as f:
-    #         data = f.read(1000)
-    #         f.seek(0, os.SEEK_END)
-    #         bytes = f.tell()
-    #         print("Размер текстового файла", bytes)
-    #
-    #     # Detect the encoding of the data
-    #     result = chardet.detect(data)
-    #     print(result['encoding'])
-    #     recognized_text = ''
-    #     with open(name, encoding=result['encoding']) as file_text:
-    #         chunk = file_text.read(10000)
-    #         while chunk:
-    #             recognized_text = recognized_text + chunk
-    #             chunk = file_text.read(10000)
-    #     print(recognized_text)
-    #     text.read_subs(file_audio.folder_name)
-    #     # prep = text.preprocess()
-    #     # sents, tokens = prep.sent_vector(recognized_text)
-    #     # print(sents, end = '\n')
-    #     # print(tokens, end = ' ')
-    #
+        name = 'СШГЭС_4_Авария.txt'
+        folder = 'СШГЭС_4_Авария\\'
+        print(name)
+        text = Text(folder, name)
+
+        read_subs(folder)
+        sents, tokens = text.sent_vector()
+        text.split_paragraphs()
+
