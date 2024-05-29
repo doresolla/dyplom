@@ -1,87 +1,91 @@
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
+from nltk.stem.snowball import SnowballStemmer
 from nltk import word_tokenize, sent_tokenize
 import pandas as pd
 from spacy import load
+from spacy.lang.ru import Russian
 from chardet import detect
-from spacy.lang.ru.examples import sentences
 import numpy as np
-# Library to import pre-trained model for sentence embeddings
 from sentence_transformers import SentenceTransformer
-# Calculate similarities between sentences
 from sklearn.metrics.pairwise import cosine_similarity
 from scipy.signal import argrelextrema
-from spacy.lang.ru import Russian
+
 import re, math
 
-TOKEN = re.compile('[\w\d]+')
+TOKEN = re.compile('\w+')
+stopWords = set(stopwords.words("russian"))
+model = load('ru_core_news_sm', exclude=['parser', 'attribute_ruler', 'ner','morphologizer'])
+#morph = MorphAnalyzer()
+
 class Text:
-    def __init__(self, folder, name):
-        #self.stopwords_ru = stopwords.words('russian')
-        self.folder = folder
+    def __init__(self, name):
         self.name = name
-        with open(self.folder + self.name, 'rb') as f:
+        with open(name + '\\' + name+'.txt', 'rb') as f:
             data = f.read(1000)
         result = detect(data)
         print(result['encoding'])
         recognized_text = ''
-        with open(folder + name, encoding=result['encoding']) as file_text:
+        with open(name + '\\'+ name+'.txt', encoding='utf-8') as file_text:
             chunk = file_text.read(10000)
             while chunk:
                 recognized_text = recognized_text + chunk
                 chunk = file_text.read(10000)
-        self.text = recognized_text
-        self.model = load('ru_core_news_sm')
-        self.sentences = []
-        self.tokens = []
-        self.dataset = pd.DataFrame()
+        self.text = recognized_text.lower()
+        REG = re.compile('\w+')
+        text_no_punkt = " ".join(REG.findall(self.text))
+        data = {"Исходный текст":self.text,"Без пунктуации":[text_no_punkt]}
+        self.sentences, self.tokens = self.tokenize()
+        self.dataset = pd.DataFrame(data)
 
-    def tokenize_regex(self, text):
-        text = text.lower()
-        all_tokens =TOKEN.findall(text)
-        return all_tokens
-       # return [token for token in all_tokens if token not in self.stopwords_ru]
-    def tokenize_corpus(self, corpus, tokenizer=tokenize_regex, **tokenizer_kwargs):
-        return [tokenizer(text, **tokenizer_kwargs) for text in corpus]
-
-    def sent_vector(self):
+    def tokenize(self):
         sentences = sent_tokenize(self.text)
+        tokens = []
         self.sentences = [sent[:len(sent)-1] for sent in sentences]
         for s in self.sentences:
-            self.tokens.extend( self.tokenize_regex(s))
-
+            tokens.extend(word_tokenize(s,language='ru'))
+        tokens = [token for token in tokens if token not in stopWords]
+        self.tokens = list(dict.fromkeys(tokens))
         return self.sentences, self.tokens
-    def tokenize(self, text):
+
+    def lemma_spacy(self):
+        for doc in model.pipe(self.dataset['Без пунктуации'].values):
+            lemma = [n.lemma_ for n in doc]
+            self.dataset['lemma_ru_core'] = [lemma]
+        print("Lemmatize is done")
+    def lemmatizer_spacy(self, doc):
+        lemmatizer = model.get_pipe("lemmatizer")
+        print(lemmatizer.mode)  # какой лемматизатор используется
+        lemmas = " ".join([token.lemma_ for token in doc])
+        self.dataset['lemma_lemmatizer_spacy'] = [lemmas]
+        return lemmas
+
+    # def lemmatize(self, doc):
+    #     words = []
+    #     for token in doc:
+    #         if (token.is_stop != True) and (token.is_punct != True) and (token.is_space != True) and (token.is_digit != True):
+    #             words.append(token.lemma_)
+    #     return ' '.join(words)
+    def stemm(self):
+        stemmer = SnowballStemmer(language="russian")
+        stem = []
+        for token in self.tokens:
+            stem.append(stemmer.stem(token))
+        stems = " ".join(stem)
+        self.dataset['stem'] = stems
+        return stems
 
 
-        # Создаем экземпляр токенизатора
-        tokens = word_tokenize(text,language='ru', preserve_line=True)
-
-        # Выведем список всех слов в словаре
-        print(tokens)
-
-        #
-        # word_indexes = [tokenizer(sentence) for sentence in dict]
-        # print(word_indexes)
-        #
-        # for i in range(len(tokenizer.get_vocabulary())):
-        #     print(f'{i} -->', tokenizer.get_vocabulary()[i])
-        #
-        # for i in word_indexes:
-        #     print("e.numpy() = ", i.numpy())
-
-    def lemmatize(self):
-        lemma = []
-        #
-        # for doc in self.model.pipe(author_data["text_clean"].values):
-        #     lemma.append([n.lemma_ for n in doc])
 
     def sent_summary(self):
-        stopWords = set(stopwords.words("russian"))
-        #words = word_tokenize(self.text)
+        if not self.tokens or not self.sentences:
+            return
+        docs = list(model.pipe(self.dataset['Исходный текст']))
+        lemmas = self.lemmatizer_spacy(docs[0])
+        self.dataset['Лемматизированный текст']=[lemmas]
         freqTable = dict()
-        for word in self.tokens:
+        for word in lemmas:
             if word in stopWords:
                 continue
             if word in freqTable:
@@ -103,8 +107,8 @@ class Text:
         average = int(allFreq / len(sentenceValue))
 
         # Storing sentences into our summary.
-        with open(self.folder+"sent_summary.txt", 'w' ) as f:
-            for sentence in sentences:
+        with open(self.name+"sent_summary.txt", 'w' ) as f:
+            for sentence in self.sentences:
                 if (sentenceValue[sentence] > (1.2 * average)):
                     f.write(sentence + " ")
     def split_paragraphs(self):
@@ -149,7 +153,7 @@ class Text:
                 text += f'\n\n {each}. '
             else:
                 text += f'{each}. '
-        with open(self.folder+"paragraphs.txt", 'w') as f:
+        with open(self.name+"\\paragraphs.txt", 'w') as f:
             f.write(text)
 
 

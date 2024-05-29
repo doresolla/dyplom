@@ -1,10 +1,8 @@
 import re
-import whisper
-import operator
+import time
 from yt_dlp import YoutubeDL
 import subprocess
-
-import math
+from math import ceil
 import os
 
 
@@ -13,7 +11,6 @@ class AudioFile:
 
     def __init__(self, s, duration, chapters):
         self.filename = s
-        self.ext = self.filename[s.index('.'):]
         self.folder_name = self.filename[:s.index('.')] + '\\'
         self.abs_filename = f'C:\\Users\\dondu\\OneDrive\\Documents\\GitHub\\dyplom\\{self.filename}'
         self.duration = duration
@@ -27,17 +24,17 @@ class AudioFile:
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
             print(f"Создание директории для файла {self.filename}")
-        elif not (os.path.isfile(dest_folder + self.filename)):
+        if not (os.path.isfile(dest_folder + self.filename)):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename, dest_folder + self.filename)
-            os.replace(current_dir+'\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
+            os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4', dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
+            os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
             self.abs_filename = dest_folder + self.filename
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
-    def convert_and_split(self, abs_filename):
+    def split(self, abs_filename):
         splits = []
-
-        total_mins = math.ceil(self.duration / 60)
+        total_mins = ceil(self.duration / 60)
         counter = 0
         try:
             if (10 < total_mins):
@@ -45,89 +42,67 @@ class AudioFile:
                     counter += 1
                     out = f'.\\{self.folder_name}\\{counter}_{self.filename}'
                     split_video(abs_filename, i, i + 5, out)
-                #    convert_video_to_audio_ffmpeg(out[:out.rindex('.')], "wav")
                     splits.append(out)
 
             else:
                 out = f'.\\{self.folder_name}\\{self.filename}'
-                # convert_video_to_audio_ffmpeg(out[:out.rindex('.')], "wav")
                 splits.append(out)
         except Exception as e:
-            print("Ошибка при конвертировании и разделении")
+            print("Ошибка при разделении")
             print(e)
         else:
-            print("Конвертирование и разделение прошло успешно")
+            print("Разделение прошло успешно")
             return splits
+
     def recognizeSpeech(self, files, model):
-        print(self.filename)
-        start = self.duration //10
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        dest_folder = os.path.join(current_dir, self.folder_name)
-        cut = dest_folder + '\\cut.wav'
-        split_video(self.abs_filename,start, start + 30, cut )
-
-        audio = whisper.load_audio(cut)
-        audio = whisper.pad_or_trim(audio)
-        #audio = path_to_audio
-        mel = whisper.log_mel_spectrogram(audio).to(model.device)
-        _, probs = model.detect_language(mel)
-        output = {k: d[k] for e, d in enumerate(sorted(
-            probs, key=lambda d: next(d[k] for k in d), reverse=True)) for k in d if e < 3}
-
-        print("Вероятности появления различных языков:", output )
-        lang = max(output.items(), key=operator.itemgetter(1))[0]
-        print ("Язык - ", lang)
-
+        # файл с расшифровкой речи
         txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
+        # Если такого файла не существует
+        start_time = time.time()
         for f in files:
-            #текущий файл
-            print('Start', f[f.rindex('\\') + 1 : ])
-            result = model.transcribe(f, fp16=False, language=lang)
-
-            # файл с расшифровкой речи
-            # Если такого файла не существует
-            if not (os.path.isfile(txt_file)):
+            # текущий файл
+            print('Start', f[f.rindex('\\') + 1:])
+            result = model.transcribe(f, fp16=False, language='ru')
+            if not (os.path.isfile(self.folder_name + txt_file)):
                 param = 'w'  # создать файл и записать в него
             else:
                 param = 'a+'  # добавить данные в конец файла
-
-            file = open(txt_file, param)
-            file.write(result['text'] + '\n')
-            file.close()
+            with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
+                file.write(result['text'] + '\n')
             print("Конец", f[f.rindex('\\') + 1:])
+        print("--- %s seconds ---" % (time.time() - start_time))
 
-
-def download_audio(link, to_download):
-    list_langs = []
-    if link.__contains__('youtube'):
+def download_audio(link: str, to_download=True):
+    try:
         with (YoutubeDL({
             'writeautomaticsub': True,
             'subtitlesformat': 'srt',
             'skip_download': True,
-            'subtitleslangs':['ru'],
+            'subtitleslangs': ['ru'],
             'outtmpl': '/tmp/sub.srt'
         })) as ydl:
             if to_download:
                 ydl.download(link)
             info_dict = ydl.extract_info(link, download=False)
-            #разделение на главы (end_time, start_time, title)
+            # разделение на главы (end_time, start_time, title)
             if ('chapters' in info_dict):
                 chapters = info_dict['chapters']
             right_title = check_title(info_dict['title'])
-        with (YoutubeDL({'extract_audio': True, 'format': 'bestaudio/best',
-                         'postprocessors': [{
-                             'key': 'FFmpegExtractAudio',
-                             'preferredcodec': 'wav',
-                             'preferredquality': '192',
-                         }],
-                         'outtmpl': right_title,
-                         }) as YT):
+        with (YoutubeDL({
+            # 'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=wav]/mp4',
+            'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
+            'merge_output_format': 'mp4',  # Формат выходного файла
+        }) as YT):
+
             # информация о видео по ссылке
             if to_download:
                 YT.download(link)
             info_dict = YT.extract_info(link, download=False)
+            convert_video_to_audio_ffmpeg(right_title + '.mp4')
         return right_title + '.wav', info_dict['duration'], chapters
-
+    except Exception as e:
+        print('Не удалось скачать видео по ссылке')
+        print(e)
 
 def check_title(title):
     title = title.replace(' ', '_')
@@ -137,8 +112,7 @@ def check_title(title):
 
     return title
 
-
-def convert_video_to_audio_ffmpeg(video_file, output_ext="mp3"):
+def convert_video_to_audio_ffmpeg(video_file, output_ext="wav"):
     """Converts video to audio directly using `ffmpeg` command
     with the help of subprocess module"""
     filename, ext = os.path.splitext(video_file)
@@ -148,18 +122,10 @@ def convert_video_to_audio_ffmpeg(video_file, output_ext="mp3"):
                     stderr=subprocess.STDOUT)
 
 
-def split_video(file_path:str, start:int, end:int, output_path:str):
-    ''' file_path  '''
+def split_video(file_path: str, start: int, end: int, output_path: str):
     start_time = f'{start // 60}:{start % 60}:00'
     end_time = f'{end // 60}:{end % 60}:00'
+    if start == end:
+        end_time = f'{end // 60}:{end % 60}:30'
     command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -c copy {output_path}"
     subprocess.call(command, shell=True)
-
-
-def cut_video( filename, duration ):
-    start_time = duration//10
-    end_time = start_time + 30
-    command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -c copy {output_path}"
-
-    cmd =['ffmpeg','-i', ]
-
