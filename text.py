@@ -1,11 +1,13 @@
+import os.path
+
 import nltk
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
+from nltk.stem import WordNetLemmatizer
 from nltk import word_tokenize, sent_tokenize
 import pandas as pd
 from spacy import load
-from spacy.lang.ru import Russian
 from chardet import detect
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -32,60 +34,41 @@ class Text:
             while chunk:
                 recognized_text = recognized_text + chunk
                 chunk = file_text.read(10000)
-        self.text = recognized_text.lower()
+        self.text = recognized_text
         REG = re.compile('\w+')
         text_no_punkt = " ".join(REG.findall(self.text))
-        data = {"Исходный текст":self.text,"Без пунктуации":[text_no_punkt]}
-        self.sentences, self.tokens = self.tokenize()
-        self.dataset = pd.DataFrame(data)
+        self.data = {"Исходный текст":recognized_text,"Без пунктуации":text_no_punkt}
+        self.tokenize()
+
 
     def tokenize(self):
         sentences = sent_tokenize(self.text)
-        tokens = []
         self.sentences = [sent[:len(sent)-1] for sent in sentences]
-        for s in self.sentences:
-            tokens.extend(word_tokenize(s,language='russian'))
+        tokens = word_tokenize(self.data['Без пунктуации'].lower(), language='russian')
         tokens = [token for token in tokens if token not in stopWords]
         self.tokens = list(dict.fromkeys(tokens))
-        return self.sentences, self.tokens
+        print("Количество предложений исходного текста:", len(self.sentences))
 
-    def lemma_spacy(self):
-        for doc in model.pipe(self.dataset['Без пунктуации'].values):
-            lemma = [n.lemma_ for n in doc]
-            self.dataset['lemma_ru_core'] = [lemma]
-        print("Lemmatize is done")
+
     def lemmatizer_spacy(self, doc):
-        lemmatizer = model.get_pipe("lemmatizer")
-        print(lemmatizer.mode)  # какой лемматизатор используется
-        lemmas = " ".join([token.lemma_ for token in doc])
-        self.dataset['lemma_lemmatizer_spacy'] = [lemmas]
-        return lemmas
-
-    # def lemmatize(self, doc):
-    #     words = []
-    #     for token in doc:
-    #         if (token.is_stop != True) and (token.is_punct != True) and (token.is_space != True) and (token.is_digit != True):
-    #             words.append(token.lemma_)
-    #     return ' '.join(words)
-    def stemm(self):
+        return [token.lemma_ for token in doc]
+    def stemm(self, text):
         stemmer = SnowballStemmer(language="russian")
         stem = []
-        for token in self.tokens:
+        for token in text:
             stem.append(stemmer.stem(token))
         stems = " ".join(stem)
-        self.dataset['stem'] = stems
-        return stems
-
-
+        self.data['stem'] = stems
+        return stem
 
     def sent_summary(self):
         if not self.tokens or not self.sentences:
             return
-        docs = list(model.pipe(self.dataset['Исходный текст']))
-        lemmas = self.lemmatizer_spacy(docs[0])
-        self.dataset['Лемматизированный текст']=[lemmas]
+        doc = model(self.data['Без пунктуации'].lower())
+        lemmas = self.lemmatizer_spacy(doc)
+        self.data['Лемматизированный текст'] = " ".join(lemmas)
         freqTable = dict()
-        for word in lemmas:
+        for word in self.tokens:
             if word in stopWords:
                 continue
             if word in freqTable:
@@ -93,7 +76,6 @@ class Text:
             else:
                 freqTable[word] = 1
         sentenceValue = dict()
-
         allFreq = 0
         for sentence in self.sentences:
             for word, freq in freqTable.items():
@@ -102,19 +84,22 @@ class Text:
                         sentenceValue[sentence] += freq
                     else:
                         sentenceValue[sentence] = freq
-            allFreq += sentenceValue[sentence]
+            try:
+                allFreq += sentenceValue[sentence]
+            except Exception as e:
+                print(e)
 
         average = int(allFreq / len(sentenceValue))
 
         # Storing sentences into our summary.
-        with open(self.name +"\\"+ self.name+"_sent_summary.txt", 'a+' ) as f:
+        with open(self.name +"\\"+"sent_summary.txt", 'a+', encoding='utf-8') as f:
             for sentence in self.sentences:
-                if (sentenceValue[sentence] > (1.05 * average)):
+                if (sentenceValue[sentence] > (1.1 * average)):
                     sentence = sentence.strip()
-                    f.write(sentence.capitalize() + ". ")
-                    print(sentence)
+                    f.write(sentence + ". ")
 
     def split_paragraphs(self):
+        print('Разделение текста на параграфы')
         model = SentenceTransformer('DiTy/bi-encoder-russian-msmarco')
         # Get the length of each sentence
         sentece_length = [len(each) for each in self.sentences]
@@ -129,12 +114,6 @@ class Text:
                 # let's replace all the commas with dots
                 each = each.replace(',', '.')
             text += f'{each}. '
-        sentences = text.split('. ')
-        # Now let's concatenate short ones
-        text = ''
-        for each in sentences:
-            text += f'{each}. '
-        # Split text into sentences
         sentences = text.split('. ')
         # Embed sentences
         embeddings = model.encode(sentences)
@@ -153,11 +132,23 @@ class Text:
         text = ''
         for num, each in enumerate(sentences):
             if num in split_points:
-                text += f'\n\n {each}. '
+                text += f'\n\n {each.capitalize()}. '
             else:
                 text += f'{each}. '
-        with open(self.name + "\\paragraphs.txt", 'w') as f:
+        with open(self.name + "\\paragraphs.txt", 'w',  encoding="utf-8") as f:
             f.write(text)
+
+    def add_data_export(self, dataset):
+        if (os.path.isfile(dataset)):
+            df = pd.read_csv(dataset, index_col=0)
+            if self.data['Исходный текст'] not in df['Исходный текст'].values:
+                df_copy = pd.DataFrame(self.data, index=[1])
+                df = pd.concat([df_copy, df], ignore_index=True)
+                if 'Unnamed: 0' in df.columns:
+                    df.drop(columns=['Unnamed: 0'], inplace=True)
+        else:
+            df = pd.DataFrame(self.data, index = [0])
+        df.to_csv(dataset)
 
 def read_subs(folder):
     name = folder + '\\' + 'sub.srt.ru.vtt'

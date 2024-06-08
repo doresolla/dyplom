@@ -1,18 +1,25 @@
 import re
-import time
+from time import time
 from yt_dlp import YoutubeDL
 import subprocess
 from math import ceil
+
+import torch
+import whisper
+from whispercpp import Whisper
+import pywhispercpp as pw
+from pywhispercpp.model import Model
 import os
 
 
 class AudioFile:
-    """    """
+    torch.cuda.is_available()
+    model = whisper.load_model("small", in_memory=True)
 
     def __init__(self, s, duration, chapters):
         self.filename = s
         self.folder_name = self.filename[:s.index('.')] + '\\'
-        self.abs_filename = f'C:\\Users\\dondu\\OneDrive\\Documents\\GitHub\\dyplom\\{self.filename}'
+        self.abs_filename = os.path.dirname(os.path.realpath(__file__))+'\\'+self.filename
         self.duration = duration
         self.chapters = chapters
         self.create_folder()
@@ -54,23 +61,70 @@ class AudioFile:
             print("Разделение прошло успешно")
             return splits
 
-    def recognizeSpeech(self, files, model):
+    def recognizeSpeech(self, files):
         # файл с расшифровкой речи
         txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
-        # Если такого файла не существует
         start_time = time.time()
         for f in files:
             # текущий файл
             print('Start', f[f.rindex('\\') + 1:])
-            result = model.transcribe(f, fp16=False, language='ru')
+            result = self.model.transcribe(f, fp16=False, language='ru')
             if not (os.path.isfile(self.folder_name + txt_file)):
                 param = 'w'  # создать файл и записать в него
             else:
                 param = 'a+'  # добавить данные в конец файла
             with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
-                file.write(result['text'] + '\n')
+                file.write(result['text'] + ' ')
             print("Конец", f[f.rindex('\\') + 1:])
         print("--- %s seconds ---" % (time.time() - start_time))
+
+    def recognizeWhisper_cpp(self, files):
+        txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
+        # Если такого файла не существует
+
+        start_time = time.time()
+        w = Whisper.from_pretrained('small')
+
+        for f in files:
+            print(f)
+            result = w.transcribe_from_file(f)
+            print(result)
+            print('Конец', f)
+            # if not (os.path.isfile(self.folder_name + txt_file)):
+            #     param = 'w'  # создать файл и записать в него
+            # else:
+            #     param = 'a+'  # добавить данные в конец файла
+            # with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
+            #     file.write(result['text'] + ' ')
+
+    def recognizePywhisper_cpp(self):
+        model = pw.model.Model()
+        txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
+        # Если такого файла не существует
+        try:
+
+            start_time = time()
+            model = Model('small',n_threads=6, language='ru' )
+            # segments = model.transcribe(self.filename, speed_up=True)
+            segments = model.transcribe(self.folder_name+self.filename)
+            end_time = time()
+            for seg in segments:
+                print(seg.text)
+            print("Время выполнения, ",end_time - start_time)
+        except Exception as e:
+            print(e)
+
+        # for f in files:
+        #     print(f)
+        #     result = w.transcribe_from_file(f)
+        #     print(result)
+        #     print('Конец', f)
+            # if not (os.path.isfile(self.folder_name + txt_file)):
+            #     param = 'w'  # создать файл и записать в него
+            # else:
+            #     param = 'a+'  # добавить данные в конец файла
+            # with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
+            #     file.write(result['text'] + ' ')
 
 def download_audio(link: str, to_download=True):
     try:
@@ -109,7 +163,7 @@ def check_title(title):
     title = re.sub(r'[^\w]', '_', title)
     title = re.sub(r'_{2,}', '_', title)
     title = re.sub(r'_$', '', title)
-
+    title = title.strip()
     return title
 
 def convert_video_to_audio_ffmpeg(video_file, output_ext="wav"):
@@ -127,5 +181,5 @@ def split_video(file_path: str, start: int, end: int, output_path: str):
     end_time = f'{end // 60}:{end % 60}:00'
     if start == end:
         end_time = f'{end // 60}:{end % 60}:30'
-    command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -c copy {output_path}"
+    command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -n -c copy {output_path}"
     subprocess.call(command, shell=True)
