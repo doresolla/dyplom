@@ -1,62 +1,65 @@
-from audio import AudioFile
-from text import Text, read_subs
-import whisper
-from os import path
+from main_window import Ui_MainWindow
+from PyQt6.QtWidgets import QApplication, QMainWindow
+from PyQt6.QtCore import QThread, QObject, pyqtSignal, QThreadPool
+import sys
+
+from mainAction import Main
+
+
+class WorkerSignals(QObject):
+    result = pyqtSignal(str)
+
+
+class MainWindow(QMainWindow, Ui_MainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.signals = WorkerSignals()
+        self.signals.result.connect(self.update_label)
+        self.video_signal = WorkerSignals()
+        self.video_signal.result.connect(self.update_videoname_label)
+
+        self.startButton.clicked.connect(self.start_thread)
+
+
+    def start_thread(self):
+        try:
+            text = self.lineEdit.text().strip('"')
+            if text != '':
+                main_process = Main(self.signals, text, self.video_signal)
+                self.label_status.setText("Начало работы")
+                QThreadPool.globalInstance().start(main_process)
+                self.textPrint.setText("")
+            else:
+                self.textPrint.setText('Введите корректное значение')
+        except Exception as e:
+            text = self.textPrint.toPlainText()
+            self.textPrint.setText(text + '\n' + e)
+
+    def update_label(self, text):
+        self.label_status.setText(text)
+        # if text == 'Работа завершена':
+        #     self.textPrint.setText()
+    def update_videoname_label(self, text):
+        self.label_videoname.setText("Название видео "+text)
+        # if text == 'Работа завершена':
+        #     self.textPrint.setText()
+
+
+def show_exception_and_exit(exc_type, exc_value, tb):
+    import traceback
+    traceback.print_exception(exc_type, exc_value, tb)
+    input("Press key to exit.")
+    sys.exit(-1)
+
 
 if __name__ == '__main__':
-    links =  ['https://www.youtube.com/watch?v=I_ReFF3qiQ8',
-              #'https://www.youtube.com/watch?v=jR6x5PmBL2I',
-            #  'https://www.youtube.com/watch?v=6dYPBA7-1Wg',
-     #   'https://www.youtube.com/watch?v=ML5tP8m6SHw',
-     #    'https://www.youtube.com/watch?v=k9 wK2FThEsk&t'
-              ]
-    for link in links:
-        # filename, duration, chapters = audio.download_audio(link, False)
-        # print(chapters)
-        # file = audio.AudioFile(filename, duration, chapters)
-        filename = 'Протокол_HTTP_Компьютерные_сети_2024_10.wav'
-        # #files = file.split(file.abs_filename)
-        # files = ['1_Протокол_HTTP_Компьютерные_сети_2024_10.wav',
-        #  '2_Протокол_HTTP_Компьютерные_сети_2024_10.wav',
-        #  '3_Протокол_HTTP_Компьютерные_сети_2024_10.wav',
-        #  '4_Протокол_HTTP_Компьютерные_сети_2024_10.wav'
-        #  ]
-      #  print(files)
-      #   start = file.duration // 10 // 60
-      #   current_dir = path.dirname(path.realpath(__file__))
-      #   dest_folder = path.join(current_dir, file.folder_name)
-      #   cut = dest_folder + 'cut.wav'
-      #   audio.split_video(file.folder_name + file.filename , start, start, cut)
-      #   model = whisper.load_model("small", in_memory=True)
-      #
-      #   cut = whisper.load_audio(cut)
-      #   cut = whisper.pad_or_trim(cut)
-      #   mel = whisper.log_mel_spectrogram(cut).to(model.device)
-      #   _, probs = model.detect_language(mel)
-      #
-      #   output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
-      #   print("Вероятности появления различных языков:", output)
-      #   lang = output[0]
-      #   print("Язык - ", lang)
-      #   #если есть неопределенность в языке
-      #   if output[1][1] > 0.2:
-      #       print(output[1])
-        try:
-          #  file.recognizeSpeech([file.folder_name + file.filename])
-            file = AudioFile(filename, 1070, [])
-            file.recognizePywhisper_cpp()
-        except Exception as e:
-            print('Ошибка при распознавании голоса')
-            print(e)
-        else:
-            print("Распознавание прошло успешно")
-    #     name = file.filename[:file.filename.index('.')]
-    #    # name = 'Протокол_HTTP_Компьютерные_сети_2024_10'
-    #  #   name = 'СШГЭС_4_Авария'
-    #    # name = '_В_ЕГЭ_по_математике_нет_сложных_задач_Задания_1_11_Профильный_уровень_Борис_Трушин'
-    # #ltmmatize
-    #     text = Text(name)
-    #     text.split_paragraphs()
-    #     text.sent_summary()
-    #     text.add_data_export('dataset.csv')
-    #
+
+    sys.excepthook = show_exception_and_exit
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    try:
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        print(e)
