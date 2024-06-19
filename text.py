@@ -15,13 +15,16 @@ from sklearn.feature_extraction.text import CountVectorizer
 from pymorphy3 import MorphAnalyzer
 from math import exp
 from re import compile, sub
+from docx import Document
 
 TOKEN = compile('\w+')
 stopWords = set(stopwords.words("russian"))
+
+
 class Text:
     def __init__(self, name, chapters=None):
         if chapters is None:
-            chapters = []
+            chapters = {}
         self.name = name
         with open(name + '\\' + name + '.txt', 'rb') as f:
             data = f.read(1000)
@@ -175,15 +178,15 @@ class Text:
             return
         doc = self.model(self.data['Без пунктуации'].lower())
 
-        print('Именнованные сущности')
-        ents = [ent for ent in doc.ents]
-        print(ents, sep=', ')
+        # print('Именнованные сущности')
+        # ents = [ent for ent in doc.ents]
+        # print(ents, sep=', ')
 
         lemmas = self.lemmatizer_spacy(doc)
         self.data['Лемматизированный текст'] = " ".join(lemmas)
         freqTable = dict()
         for word in self.tokens:
-            if word in self.stopWords:
+            if word in stopWords:
                 continue
             if word in freqTable:
                 freqTable[word] += 1
@@ -204,23 +207,24 @@ class Text:
                 print(e)
 
         average = int(allFreq / len(sentenceValue))
-
+        summary = []
+        summary_t = ''
         # Storing sentences into our summary.
         with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
             for sentence in self.sentences:
-                if (sentenceValue[sentence] > (1.1 * average)) or (any(str(element) in sentence for element in set(ents))):
+                if (sentenceValue[sentence] > (1.1 * average)):
                     f.write(sentence.strip() + ". ")
+                    summary_t = summary_t + sentence.strip() + ". "
+        self.export_to_doc([summary_t])
 
-
-
-    def text_rank(self, num_sentences=5):
+    def text_rank(self):
         sentences = []
         sentence_paragraph_map = []
         for para_idx, paragraph in enumerate(self.paragraphs):
             para_sentences = sent_tokenize(paragraph)
             sentences.extend(para_sentences)
             sentence_paragraph_map.extend([para_idx] * len(para_sentences))
-
+        num_sentences = len(sentences) * 0.5
         vectorizer = CountVectorizer().fit_transform(sentences)
         vectors = vectorizer.toarray()
         cosine_matrix = cosine_similarity(vectors)
@@ -229,15 +233,19 @@ class Text:
         scores = pagerank(graph)
         ranked_sentences = sorted(((score, idx) for idx, score in scores.items()), reverse=True)
 
-        top_sentence_indices = [idx for score, idx in ranked_sentences[:num_sentences]]
+        top_sentence_indices = [int(idx) for score, idx in ranked_sentences[:num_sentences]]
         top_sentence_indices.sort()
 
-        summary = [sentences[idx] for idx in top_sentence_indices]
-        summary_t = ' '.join(summary)
+        summary_paragraphs = [[] for _ in range(len(self.paragraphs))]
+        for idx in top_sentence_indices:
+            para_idx = sentence_paragraph_map[idx]
+            summary_paragraphs[para_idx].append(sentences[idx])
 
-        with open(self.name+'\\text_rank.txt', 'w', encoding='utf-8')as f:
-            f.write(summary_t)
-        return summary_t
+        summary = '\n\n'.join([' '.join(paragraph) for paragraph in summary_paragraphs if paragraph])
+        self.export_to_doc(summary_paragraphs)
+        with open(self.name + '\\text_rank.txt', 'w', encoding='utf-8') as f:
+            f.write(summary)
+        return summary
 
     def add_data_export(self, dataset):
 
@@ -252,6 +260,47 @@ class Text:
             df = pd.DataFrame(self.data, index=[0])
             df.to_csv(dataset)
 
+    def export_to_doc(self, paragraphs):
+        doc = Document()
+
+        if len(self.chapters) > 1:
+            timing_dict = {}
+            # Добавление заголовка и абзаца
+            with open(self.name + '\\timings.txt', 'r', encoding='utf-8') as file:
+                while True:
+                    # Читаем начальное время
+                    start_time = file.readline().strip()
+                    if not start_time:  # Если строка пустая, значит файл закончился
+                        break
+                    # Читаем текст
+                    text = file.readline().strip()
+                    # Читаем конечное время
+                    end_time = file.readline().strip()
+                    # Добавляем данные в словарь
+                    timing_dict[start_time] = (text, end_time)
+                    # Пропускаем пустую строку
+                    file.readline()
+            summary_chapters = self.find_chapter_for_text(timing_dict)
+            for chapter_title, text in summary_chapters:
+                doc.add_heading(chapter_title, level=1)
+                doc.add_paragraph(text)
+
+        else:
+            doc.add_heading(self.name)
+            for para in paragraphs:
+                doc.add_paragraph(para)
+        doc.save(self.name + '\\' + self.name + '.docx')
+
+    def find_chapter_for_text(self, timing_dict):
+        summary_chapters = []
+        for start_time, (text, end_time) in timing_dict.items():
+            for chapter_start, chapter_title, chapter_end in self.chapters:
+                if chapter_start <= start_time <= chapter_end:
+                    summary_chapters.append((chapter_title, text))
+                    break
+        return summary_chapters
+
+
 def read_subs(folder):
     name = folder + '\\' + 'sub.srt.ru.vtt'
     recognized_text = ''
@@ -261,7 +310,8 @@ def read_subs(folder):
             recognized_text = recognized_text + chunk
             chunk = f.read(10000)
     new_file = folder + '\\' + 'new_sub.srt.ru.vtt'
-    new_text = sub(r'(\d{2}:\d{2}:\d{2}\.\d{3})|(<c>)|(</c>)|(align:start position:0%)|(-->)|(\s{2})', '', recognized_text)
+    new_text = sub(r'(\d{2}:\d{2}:\d{2}\.\d{3})|(<c>)|(</c>)|(align:start position:0%)|(-->)|(\s{2})', '',
+                   recognized_text)
     new_text = sub(r'(\s{3})|(<>)', '', new_text)
     new_text = new_text.replace('WEBVTT '
                                 'Kind: captions'
@@ -326,6 +376,7 @@ def sentence_similarity(sent1, sent2):
         return 0
     return len(common_words) / (len(words1) + len(words2))
 
+
 def build_graph(sentences):
     graph = Graph()
     for i, sent1 in enumerate(sentences):
@@ -336,10 +387,12 @@ def build_graph(sentences):
                     graph.add_edge(i, j, weight=similarity)
     return graph
 
+
 def rank_sentences(graph):
     scores = pagerank(graph, weight='weight')
     ranked_sentences = sorted(((score, idx) for idx, score in scores.items()), reverse=True)
     return ranked_sentences
+
 
 def tokenize_and_lemmatize(sentence):
     lemmatizer = WordNetLemmatizer()
@@ -347,4 +400,3 @@ def tokenize_and_lemmatize(sentence):
     lemmas = [lemmatizer.lemmatize(token.lower()) for token in tokens if token.isalnum() and
               token.lower() not in stopWords]
     return lemmas
-

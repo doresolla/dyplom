@@ -1,6 +1,6 @@
 from main_window import Ui_MainWindow
 from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, QThreadPool
+from PyQt6.QtCore import  QObject, pyqtSignal, QThreadPool
 import sys
 
 from mainAction import Main
@@ -18,6 +18,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.signals.result.connect(self.update_label)
         self.video_signal = WorkerSignals()
         self.video_signal.result.connect(self.update_videoname_label)
+        self.print_signal = WorkerSignals()
+        self.print_signal.result.connect(self.update_print_label)
 
         self.startButton.clicked.connect(self.start_thread)
 
@@ -26,7 +28,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             text = self.lineEdit.text().strip('"')
             if text != '':
-                main_process = Main(self.signals, text, self.video_signal)
+                main_process = Main(self.signals, text, self.video_signal, self.print_signal)
                 self.label_status.setText("Начало работы")
                 QThreadPool.globalInstance().start(main_process)
                 self.textPrint.setText("")
@@ -42,8 +44,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #     self.textPrint.setText()
     def update_videoname_label(self, text):
         self.label_videoname.setText("Название видео "+text)
-        # if text == 'Работа завершена':
-        #     self.textPrint.setText()
+    def update_print_label(self, text):
+        textPrint = self.textPrint.toPlainText()
+        if textPrint != '':
+            self.textPrint.setText(textPrint + '\n' + text)
+        else:
+            self.textPrint.setText(text)
 
 
 def show_exception_and_exit(exc_type, exc_value, tb):

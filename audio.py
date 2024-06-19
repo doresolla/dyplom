@@ -2,7 +2,7 @@ import re
 from time import time
 from yt_dlp import YoutubeDL
 import subprocess
-from math import ceil
+
 
 from pywhispercpp.model import Model
 import os
@@ -10,8 +10,6 @@ import os
 
 class AudioFile:
 
-
-    # model = whisper.load_model("small", in_memory=True)
 
     def __init__(self, s, duration, chapters, isThere, abs=''):
         self.filename = s
@@ -124,7 +122,7 @@ class AudioFile:
         print("Имя видео файла",filename+'.mp4')
         s = "eq(pict_type\,PICT_TYPE_I)"
         command = ["ffmpeg", "-y", "-i", filename + '.mp4', "-vsync", "0", "-vf", f"select={s}", f"-s",
-                   f"{width}x{height}", "-f", "image2", f"{filename}-%03d.jpeg"]
+                   f"{width}x{height}", "-f", "image2", f"{filename+'\\' + filename}-%03d.jpeg"]
         try:
             result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
             print("Команда успешно выполнена")
@@ -136,7 +134,7 @@ class AudioFile:
 
 def download_audio(link: str):
     try:
-        chapters = []
+        chapters = {}
         with (YoutubeDL({
             'writeautomaticsub': True,
             'subtitlesformat': 'srt',

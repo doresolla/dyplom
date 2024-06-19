@@ -7,10 +7,11 @@ from PyQt6.QtCore import QRunnable
 
 
 class Main(QRunnable):
-    def __init__(self, signal, link, set_videoname_signal):
+    def __init__(self, signal, link, set_videoname_signal, print_signal):
         super().__init__()
         self.signals = signal
         self.video = set_videoname_signal
+        self.print_signal = print_signal
         self.link = link.strip('"')
 
     def run(self):
@@ -24,21 +25,24 @@ class Main(QRunnable):
                 file = audio.AudioFile(filename, duration, [], False, self.link)
             except Exception as e:
                 print(e)
-                self.signals.result.emit("Ошибка: убедитесь, что файл доступен.", e)
+                self.print_signal.result.emit("Ошибка: убедитесь, что файл доступен.", e)
         else:
             self.signals.result.emit("Скачивание видео")
             isThere = False
-            filename, duration, chapters = audio.download_audio(self.link)
-            print(chapters)
-            self.signals.result.emit("Скачивание видео завершено")
-            file = audio.AudioFile(filename, duration, chapters, isThere)
+            try:
+                filename, duration, chapters = audio.download_audio(self.link)
+                print(chapters)
+                self.signals.result.emit("Скачивание видео завершено")
+                file = audio.AudioFile(filename, duration, chapters, isThere)
+            except Exception as e:
+                self.print_signal.result.emit("Не удалось скачать видео по ссылке" + e)
+
 
         if isinstance(file, audio.AudioFile):
-            self.video.result.emit(file.filename)
+            self.video.result.emit(file.filename[:file.filename.rindex('.')])
             self.process_file(file)
 
     def process_file(self, file):
-
         start = file.duration // 10 // 60
         current_dir = path.dirname(path.realpath(__file__))
         dest_folder = path.join(current_dir, file.folder_name)
@@ -58,28 +62,37 @@ class Main(QRunnable):
         # если есть неопределенность в языке
         if output[1][1] > 0.2 or lang[0] != 'ru':
             print(output[1])
-            self.signals.result.emit("Поддержка других языков недоступна")
+            self.print_signal.result.emit("Поддержка других языков недоступна")
             return
-        try:
-            # file.recognizeSpeech([file.folder_name + file.filename])
-            self.signals.result.emit('Статус: идет распознавание речи, пожалуйста, подождите')
-            file.recognizePywhisper_cpp()
-        except Exception as e:
-            print('Ошибка при распознавании голоса')
-            print(e)
-            self.signals.result.emit("Ошибка при распознавании голоса:", e)
-        else:
-            print("Распознавание прошло успешно")
-            self.signals.result.emit("Распознавание прошло успешно")
+        if path.isfile(file.folder_name + file.filename[:file.filename.rindex('.')]):
+            try:
+                # file.recognizeSpeech([file.folder_name + file.filename])
+                self.signals.result.emit('Статус: идет распознавание речи, пожалуйста, подождите')
+                file.recognizePywhisper_cpp()
+            except Exception as e:
+                print('Ошибка при распознавании голоса')
+                print(e)
+                self.print_signal.result.emit("Ошибка при распознавании голоса:" +  str(e))
+            else:
+                self.signals.result.emit("Статус: Распознавание прошло успешно")
+                self.print_signal.result.emit("Распознавание прошло успешно")
         file.extract_image()
         name = file.filename[:file.filename.index('.')]
         self.signals.result.emit("Выполняется обработка текста")
+        try:
+            text_to_sum = Text(name, file.chapters)
 
-        text_to_sum = Text(name, file.chapters)
-        text_to_sum.sent_summary()
-        text_to_sum.text_rank()
-        text_to_sum.add_data_export('dataset.csv')
-        self.signals.result.emit("Работа завершена")
+            text_to_sum.sent_summary()
+            # text_to_sum.text_rank()
+            self.signals.result.emit("Работа завершена")
+            self.print_signal.result.emit(f"Документ {text_to_sum.name} сохранен. Пожалуйста, проверьте директорию файла")
+        except Exception as e:
+            self.signals.result.emit("Ошибка во время обработки текста")
+            self.print_signal.result.emit(str(e))
+
+
+    # text_to_sum.add_data_export('dataset.csv')
+
 
 # def start_process(link):
 #     # links = [  # 'https://vk.com/video-51126445_456243401',
