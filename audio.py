@@ -3,13 +3,11 @@ from time import time
 from yt_dlp import YoutubeDL
 import subprocess
 
-
 from pywhispercpp.model import Model
 import os
 
 
 class AudioFile:
-
 
     def __init__(self, s, duration, chapters, isThere, abs=''):
         self.filename = s
@@ -122,7 +120,7 @@ class AudioFile:
         print("Имя видео файла",filename+'.mp4')
         s = "eq(pict_type\,PICT_TYPE_I)"
         command = ["ffmpeg", "-y", "-i", filename + '.mp4', "-vsync", "0", "-vf", f"select={s}", f"-s",
-                   f"{width}x{height}", "-f", "image2", f"{filename+'\\' + filename}-%03d.jpeg"]
+                   f"{width}x{height}", "-f", "image2", f"{filename}-%03d.jpeg"]
         try:
             result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
             print("Команда успешно выполнена")
@@ -134,7 +132,7 @@ class AudioFile:
 
 def download_audio(link: str):
     try:
-        chapters = {}
+        chapters = []
         with (YoutubeDL({
             'writeautomaticsub': True,
             'subtitlesformat': 'srt',
@@ -149,16 +147,20 @@ def download_audio(link: str):
         if ('chapters' in info_dict):
             chapters = info_dict['chapters']
         right_title = check_title(info_dict['title'])
-        with (YoutubeDL({
-            # 'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=wav]/mp4',
-            'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
-            'merge_output_format': 'mp4',  # Формат выходного файла
-        }) as YT):
-            dir = os.path.dirname(os.path.realpath(__file__))
-            if (not os.path.exists(dir+right_title)):
-                YT.download(link)
-            info_dict = YT.extract_info(link, download=False)
-            convert_video_to_audio_ffmpeg(right_title + '.mp4')
+        if not (os.path.isfile(right_title+'\\'+right_title+'.mp4') and os.path.isfile(right_title+'\\'+right_title+'.wav')):
+            with (YoutubeDL({
+                # 'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=wav]/mp4',
+                'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
+                'merge_output_format': 'mp4',  # Формат выходного файла
+            }) as YT):
+                dir = os.path.dirname(os.path.realpath(__file__))
+                if (not os.path.exists(dir+right_title)):
+                    YT.download(link)
+                convert_video_to_audio_ffmpeg(right_title + '.mp4')
+        with open(right_title+'\\chapters.txt', 'w', encoding='utf-8') as f:
+            print(chapters)
+            for chapter in chapters:
+                f.write(f'{chapter['start_time']} \t{chapter['title']}\t{chapter['end_time']}\n')
         return right_title + '.wav', info_dict['duration'], chapters
     except Exception as e:
         print('Не удалось скачать видео по ссылке')

@@ -1,14 +1,12 @@
 from main_window import Ui_MainWindow
 from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import  QObject, pyqtSignal, QThreadPool
+from PyQt6.QtCore import QObject, pyqtSignal, QThreadPool
 import sys
 
 from mainAction import Main
 
-
 class WorkerSignals(QObject):
     result = pyqtSignal(str)
-
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -44,20 +42,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #     self.textPrint.setText()
     def update_videoname_label(self, text):
         self.label_videoname.setText("Название видео "+text)
+        # if text == 'Работа завершена':
+        #     self.textPrint.setText()
+
     def update_print_label(self, text):
         textPrint = self.textPrint.toPlainText()
         if textPrint != '':
             self.textPrint.setText(textPrint + '\n' + text)
         else:
             self.textPrint.setText(text)
-
-
 def show_exception_and_exit(exc_type, exc_value, tb):
     import traceback
     traceback.print_exception(exc_type, exc_value, tb)
     input("Press key to exit.")
     sys.exit(-1)
-
 
 if __name__ == '__main__':
 

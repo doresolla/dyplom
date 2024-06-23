@@ -1,3 +1,4 @@
+import math
 import os.path
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
@@ -9,6 +10,9 @@ from chardet import detect
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from sumy.parsers import plaintext
+from sumy.summarizers import lsa, lex_rank, text_rank, luhn
+from sumy.nlp.tokenizers import Tokenizer
 from scipy.signal import argrelextrema
 from networkx import pagerank, from_numpy_array, Graph
 from sklearn.feature_extraction.text import CountVectorizer
@@ -17,15 +21,18 @@ from math import exp
 from re import compile, sub
 from docx import Document
 
+SEN_PERCENT = 0.5
 TOKEN = compile('\w+')
 stopWords = set(stopwords.words("russian"))
 
 
 class Text:
     def __init__(self, name, chapters=None):
-        if chapters is None:
-            chapters = {}
         self.name = name
+        if chapters is None:
+            chapters = []
+        self.chapters = chapters
+
         with open(name + '\\' + name + '.txt', 'rb') as f:
             data = f.read(1000)
         result = detect(data)
@@ -37,23 +44,20 @@ class Text:
                 recognized_text = recognized_text + chunk
                 chunk = file_text.read(10000)
         self.text = recognized_text
+        text_no_punkt = " ".join(TOKEN.findall(self.text))
+        self.data = {"Исходный текст": [recognized_text], "Без пунктуации": [text_no_punkt]}
 
-        REG = compile('\w+')
-        text_no_punkt = " ".join(REG.findall(self.text))
-
-        self.data = {"Исходный текст": recognized_text, "Без пунктуации": text_no_punkt}
         self.tokenize()
-
-        self.chapters = chapters
-        self.paragraphs = self.split_paragraphs()
+        self.paragraphs, self.sents_per_para = self.split_paragraphs()
         self.morph = MorphAnalyzer()
-
         self.model = load('ru_core_news_md', exclude=['parser', 'attribute_ruler', 'morphologizer'])
+        self.sentences_count = math.ceil(SEN_PERCENT * len(self.sentences))
+        self.ents, self.freqTable = self.preproccess()
 
     def tokenize(self):
         sentences = sent_tokenize(self.text)
         self.sentences = [sent[:len(sent) - 1] for sent in sentences]
-        tokens = word_tokenize(self.data['Без пунктуации'].lower(), language='russian')
+        tokens = word_tokenize(self.data['Без пунктуации'][0].lower(), language='russian')
         tokens = [token for token in tokens if token not in stopWords]
         self.tokens = list(dict.fromkeys(tokens))
         print("Количество предложений исходного текста:", len(self.sentences))
@@ -67,7 +71,7 @@ class Text:
         for token in text:
             stem.append(stemmer.stem(token))
         stems = " ".join(stem)
-        self.data['stem'] = stems
+        self.data['stem'] =[stems]
         return stem
 
     def split_paragraphs(self):
@@ -100,6 +104,7 @@ class Text:
         paragraphs = []
         para = ''
         count = 0
+        sent_para = []
         for num, sen in enumerate(self.sentences):
             if num in split_points:
                 count += 1
@@ -109,13 +114,15 @@ class Text:
             else:
                 text += f'{sen}. '
                 para += f'{sen}. '
+            sent_para.append((sen, count))
+
         print('paragraphs', len(paragraphs))
         # print('\n'.join(paragraphs))
         with open(self.name + "\\paragraphs.txt", 'w', encoding="utf-8") as f:
             f.write(text)
-        return paragraphs
+        return paragraphs, sent_para
 
-    def lemmatize(self, text):
+    def morphy_lemmatize(self, text):
         words = text.split()  # разбиваем текст на слова
         if len(words) > 1:
             res = list()
@@ -131,28 +138,11 @@ class Text:
         if not self.tokens or not self.sentences:
             return
         with open(self.name + "\\" + "sent_para_summary.txt", 'a+', encoding='utf-8') as f:
-            if not self.model.has_pipe('sentencizer'):
-                self.model.add_pipe('sentencizer')
-            doc = self.model(self.text)
-            # sentences = [sent.text[:-1] for sent in doc.sents]
-            sentences = sent_tokenize(self.text, language='russian')
-            sentences = [sen[:-1] for sen in sentences]
-            tokens = word_tokenize(" ".join(compile('\w+').findall(self.text)), language='russian')
-            lemmas = self.lemmatizer_spacy(doc)
-            self.data['Лемматизированный текст'] = " ".join(lemmas)
-            freqTable = dict()
-            for word in tokens:
-                word = self.lemmatize(word)
-                if word in stopWords:
-                    continue
-                if word in freqTable:
-                    freqTable[word] += 1
-                else:
-                    freqTable[word] = 1
+            self.preproccess()
             sentenceValue = dict()
             allFreq = 0
-            for sentence in sentences:
-                for word, freq in freqTable.items():
+            for sentence in self.sentences:
+                for word, freq in self.freqTable.items():
                     if word.lower() in sentence.lower():
                         if sentence in sentenceValue:
                             sentenceValue[sentence] += freq
@@ -173,59 +163,64 @@ class Text:
                         f.write(sentence + ". ")
                 f.write('\n\n')
 
-    def sent_summary(self):
+    def preproccess(self):
         if not self.tokens or not self.sentences:
             return
-        doc = self.model(self.data['Без пунктуации'].lower())
-
-        # print('Именнованные сущности')
-        # ents = [ent for ent in doc.ents]
-        # print(ents, sep=', ')
-
-        lemmas = self.lemmatizer_spacy(doc)
-        self.data['Лемматизированный текст'] = " ".join(lemmas)
+        doc = self.model(self.data['Без пунктуации'][0].lower())
+        ents = set(str(ent).lower() for ent in doc.ents)
+        lemmas = []
         freqTable = dict()
         for word in self.tokens:
             if word in stopWords:
                 continue
+            word = self.morphy_lemmatize(word).lower()
             if word in freqTable:
                 freqTable[word] += 1
             else:
                 freqTable[word] = 1
+                lemmas.append(word)
+        self.data['Лемматизированный текст pymorphy'] = [lemmas]
+        return ents, freqTable
+
+    def sent_summary(self):
         sentenceValue = dict()
         allFreq = 0
-        for sentence in self.sentences:
-            for word, freq in freqTable.items():
-                if word.lower() in sentence.lower():
-                    if sentence in sentenceValue:
-                        sentenceValue[sentence] += freq
-                    else:
-                        sentenceValue[sentence] = freq
-            try:
+        try:
+            for sentence in self.sentences:
+                tokens = word_tokenize( " ".join(TOKEN.findall(sentence)), language='russian')
+                for word in tokens:
+                    word = self.morphy_lemmatize(word).lower()
+                    if word in self.freqTable:
+                        if sentence in sentenceValue:
+                            sentenceValue[sentence] += self.freqTable[word]
+                        else:
+                            sentenceValue[sentence] = self.freqTable[word]
                 allFreq += sentenceValue[sentence]
-            except Exception as e:
-                print(e)
+        except Exception as e:
+            print(e)
+            print(repr(e))
 
         average = int(allFreq / len(sentenceValue))
-        summary = []
-        summary_t = ''
+
         # Storing sentences into our summary.
-        with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
-            for sentence in self.sentences:
-                if (sentenceValue[sentence] > (1.1 * average)):
-                    f.write(sentence.strip() + ". ")
-                    summary_t = summary_t + sentence.strip() + ". "
-        self.export_to_doc([summary_t])
+        try:
+            with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
+                for sentence in self.sentences:
+                    if sentence in sentenceValue:
+                        if (sentenceValue[sentence] > ((1+SEN_PERCENT) * average)) or (self.contains_word(sentence)):
+                            f.write(sentence.strip() + ". ")
+        except Exception as e:
+            print(e)
+            print(repr(e))
+            print(type(e).__name__)
 
     def text_rank(self):
-        sentences = []
         sentence_paragraph_map = []
         for para_idx, paragraph in enumerate(self.paragraphs):
             para_sentences = sent_tokenize(paragraph)
-            sentences.extend(para_sentences)
             sentence_paragraph_map.extend([para_idx] * len(para_sentences))
-        num_sentences = len(sentences) * 0.5
-        vectorizer = CountVectorizer().fit_transform(sentences)
+        num_sentences = math.ceil(len(self.sentences) * SEN_PERCENT)
+        vectorizer = CountVectorizer().fit_transform(self.sentences)
         vectors = vectorizer.toarray()
         cosine_matrix = cosine_similarity(vectors)
 
@@ -233,22 +228,103 @@ class Text:
         scores = pagerank(graph)
         ranked_sentences = sorted(((score, idx) for idx, score in scores.items()), reverse=True)
 
-        top_sentence_indices = [int(idx) for score, idx in ranked_sentences[:num_sentences]]
+        top_sentence_indices = [idx[1] for idx in ranked_sentences[:num_sentences]]
         top_sentence_indices.sort()
 
         summary_paragraphs = [[] for _ in range(len(self.paragraphs))]
+
         for idx in top_sentence_indices:
             para_idx = sentence_paragraph_map[idx]
-            summary_paragraphs[para_idx].append(sentences[idx])
+            summary_paragraphs[para_idx].append(self.sentences[idx])
 
         summary = '\n\n'.join([' '.join(paragraph) for paragraph in summary_paragraphs if paragraph])
         self.export_to_doc(summary_paragraphs)
         with open(self.name + '\\text_rank.txt', 'w', encoding='utf-8') as f:
             f.write(summary)
+        self.data['text_rank'] = [summary]
         return summary
 
-    def add_data_export(self, dataset):
+    # def sumy_sum(self):
+    #     # , {k: v for k, v in freqTable.items() if v != 1}
+    #     lsa_sum = lsa.LsaSummarizer()
+    #     lex_sum = lex_rank.LexRankSummarizer()
+    #     text_rank_sum = text_rank.TextRankSummarizer()
+    #     luhn_sum = luhn.LuhnSummarizer()
+    #     text = ''
+    #     parser = plaintext.PlaintextParser.from_file(self.name + "\\" + self.name + ".txt", Tokenizer('russian'))
+    #     with open(self.name + '\\lsa.txt', 'w', encoding='utf-8') as f:
+    #         for sen in lsa_sum(parser.document, self.sentences_count):
+    #             f.write(str(sen))
+    #             text = text + str(sen)
+    #
+    #     self.data['lsa'] = text
+    #     text = ''
+    #     with open(self.name + '\\lex_rank.txt', 'w', encoding='utf-8') as f:
+    #         for sen in lex_sum(parser, self.sentences_count):
+    #             f.write(str(sen) + ' ')
+    #             text = str(sen) + ' '
+    #     self.data['lex_rank'] = text
+    #     text = ''
+    #     with open(self.name + '\\text_rank_sumy.txt', 'w', encoding='utf-8') as f:
+    #         for sen in text_rank_sum(parser, self.sentences_count):
+    #             f.write(str(sen) + ' ')
+    #             text = str(sen) + ' '
+    #     self.data['text_rank_sumy'] = text
+    #     text = ''
+    #
+    #     with open(self.name + '\\luhn.txt', 'w', encoding='utf-8') as f:
+    #         for sen in luhn_sum(parser, self.sentences_count):
+    #             f.write(sen + ' ')
+    #             text = sen + ' '
+    #     self.data['luhn'] = text
+    #     print('закончено')
 
+    def sumy_sum(self):
+        # , {k: v for k, v in freqTable.items() if v != 1}
+        lsa_sum = lsa.LsaSummarizer()
+        lex_sum = lex_rank.LexRankSummarizer()
+        text_rank_sum = text_rank.TextRankSummarizer()
+        luhn_sum = luhn.LuhnSummarizer()
+        text = ''
+        parser = plaintext.PlaintextParser.from_file(self.name + "\\" + self.name + ".txt", Tokenizer('russian'))
+
+        with open(self.name + '\\lsa.txt', 'w', encoding='utf-8') as f:
+            for sen in lsa_sum(parser.document, self.sentences_count):
+                f.write(str(sen))
+                text += str(sen)
+                print(str(sen))
+
+        self.data['lsa'] = [text]
+        text = ''
+
+        with open(self.name + '\\lex_rank.txt', 'w', encoding='utf-8') as f:
+            for sen in lex_sum(parser.document, self.sentences_count):
+                f.write(str(sen) + ' ')
+                text += str(sen) + ' '
+        self.data['lex_rank'] = [text]
+        text = ''
+
+        with open(self.name + '\\text_rank_sumy.txt', 'w', encoding='utf-8') as f:
+            for sen in text_rank_sum(parser.document, self.sentences_count):
+                f.write(str(sen) + ' ')
+                text += str(sen) + ' '
+        self.data['text_rank_sumy'] = [text]
+        text = ''
+
+        with open(self.name + '\\luhn.txt', 'w', encoding='utf-8') as f:
+            for sen in luhn_sum(parser.document, self.sentences_count):
+                f.write(str(sen) + ' ')
+                text += str(sen) + ' '
+        self.data['luhn'] = [text]
+        print('закончено')
+
+    def contains_word(self, sentence):
+        sentence_words = set(sentence.lower().split())
+        words_set = set(str(word).lower() for word in self.ents)
+        return not sentence_words.isdisjoint(words_set)
+
+    def add_data_export(self, dataset):
+        print()
         if (os.path.isfile(dataset)):
             df = pd.read_csv(dataset, index_col=0)
             if self.data['Исходный текст'] not in df['Исходный текст'].values:
@@ -280,10 +356,16 @@ class Text:
                     timing_dict[start_time] = (text, end_time)
                     # Пропускаем пустую строку
                     file.readline()
-            summary_chapters = self.find_chapter_for_text(timing_dict)
-            for chapter_title, text in summary_chapters:
-                doc.add_heading(chapter_title, level=1)
-                doc.add_paragraph(text)
+            chapters = self.find_chapter_for_text(timing_dict)
+            summary_chapters = {}
+            for paragraph in paragraphs:
+                for chapter, content in chapters.items():
+                    for sentence in paragraph:
+                        if sentence in content:
+                            summary_chapters[chapter].append(sentence)
+            for chapter, content in summary_chapters.items():
+                doc.add_heading(chapter)
+                doc.add_paragraph()
 
         else:
             doc.add_heading(self.name)
@@ -292,12 +374,16 @@ class Text:
         doc.save(self.name + '\\' + self.name + '.docx')
 
     def find_chapter_for_text(self, timing_dict):
-        summary_chapters = []
-        for start_time, (text, end_time) in timing_dict.items():
-            for chapter_start, chapter_title, chapter_end in self.chapters:
-                if chapter_start <= start_time <= chapter_end:
-                    summary_chapters.append((chapter_title, text))
-                    break
+        summary_chapters = {}
+        for chapter_start, chapter_title, chapter_end in self.chapters:
+            for start_time, (text, end_time) in timing_dict.items():
+                start_time = math.ceil(start_time / 100)
+                end_time = math.ceil(end_time / 100)
+                if abs(chapter_start - start_time) <= 2 and abs(end_time - chapter_end) <= 2:
+                    if summary_chapters[chapter_title]:
+                        summary_chapters[chapter_title] = summary_chapters[chapter_title] + ' ' + text
+                    else:
+                        summary_chapters[chapter_title] = text
         return summary_chapters
 
 
