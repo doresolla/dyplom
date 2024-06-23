@@ -87,7 +87,7 @@ class Main(QRunnable):
         try:
             text_to_sum.sent_summary()
             text_to_sum.sumy_sum()
-            # text_to_sum.text_rank()
+            text_to_sum.text_rank()
         except Exception as e:
             self.print_signal.result.emit('Ошибка во время обработки текста ' + str(e))
             print(e)
