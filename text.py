@@ -20,6 +20,8 @@ from pymorphy3 import MorphAnalyzer
 from math import exp
 from re import compile, sub
 from docx import Document
+from rouge_score import rouge_scorer
+
 
 SEN_PERCENT = 0.5
 TOKEN = compile('\w+')
@@ -133,6 +135,15 @@ class Text:
         else:
             p = self.morph.parse(words[0].lower())[0]
             return p.normal_form
+    def print_para_sum(self, summary, filename):
+        with open(self.name + '\\' + filename, 'w', encoding='utf-8') as f:
+            for para in self.paragraphs:
+                sen_para = sent_tokenize(para, language='russian')
+                sen_para = [sen[:-1] for sen in sen_para]
+                for sentence in sen_para:
+                    if sentence in summary:
+                        f.write(sentence + ". ")
+                f.write('\n\n')
 
     def sent_para_summary(self):
         if not self.tokens or not self.sentences:
@@ -214,35 +225,35 @@ class Text:
             print(repr(e))
             print(type(e).__name__)
 
-    def text_rank(self):
-        sentence_paragraph_map = []
-        for para_idx, paragraph in enumerate(self.paragraphs):
-            para_sentences = sent_tokenize(paragraph)
-            sentence_paragraph_map.extend([para_idx] * len(para_sentences))
-        num_sentences = math.ceil(len(self.sentences) * SEN_PERCENT)
-        vectorizer = CountVectorizer().fit_transform(self.sentences)
-        vectors = vectorizer.toarray()
-        cosine_matrix = cosine_similarity(vectors)
-
-        graph = from_numpy_array(cosine_matrix)
-        scores = pagerank(graph)
-        ranked_sentences = sorted(((score, idx) for idx, score in scores.items()), reverse=True)
-
-        top_sentence_indices = [idx[1] for idx in ranked_sentences[:num_sentences]]
-        top_sentence_indices.sort()
-
-        summary_paragraphs = [[] for _ in range(len(self.paragraphs))]
-
-        for idx in top_sentence_indices:
-            para_idx = sentence_paragraph_map[idx]
-            summary_paragraphs[para_idx].append(self.sentences[idx])
-
-        summary = '\n\n'.join([' '.join(paragraph) for paragraph in summary_paragraphs if paragraph])
-        self.export_to_doc(summary_paragraphs)
-        with open(self.name + '\\text_rank.txt', 'w', encoding='utf-8') as f:
-            f.write(summary)
-        self.data['text_rank'] = [summary]
-        return summary
+    # def text_rank(self):
+    #     sentence_paragraph_map = []
+    #     for para_idx, paragraph in enumerate(self.paragraphs):
+    #         para_sentences = sent_tokenize(paragraph)
+    #         sentence_paragraph_map.extend([para_idx] * len(para_sentences))
+    #     num_sentences = math.ceil(len(self.sentences) * SEN_PERCENT)
+    #     vectorizer = CountVectorizer().fit_transform(self.sentences)
+    #     vectors = vectorizer.toarray()
+    #     cosine_matrix = cosine_similarity(vectors)
+    #
+    #     graph = from_numpy_array(cosine_matrix)
+    #     scores = pagerank(graph)
+    #     ranked_sentences = sorted(((score, idx) for idx, score in scores.items()), reverse=True)
+    #
+    #     top_sentence_indices = [idx[1] for idx in ranked_sentences[:num_sentences]]
+    #     top_sentence_indices.sort()
+    #
+    #     summary_paragraphs = [[] for _ in range(len(self.paragraphs))]
+    #
+    #     for idx in top_sentence_indices:
+    #         para_idx = sentence_paragraph_map[idx]
+    #         summary_paragraphs[para_idx].append(self.sentences[idx])
+    #
+    #     summary = '\n\n'.join([' '.join(paragraph) for paragraph in summary_paragraphs if paragraph])
+    #     self.export_to_doc(summary_paragraphs)
+    #     with open(self.name + '\\text_rank.txt', 'w', encoding='utf-8') as f:
+    #         f.write(summary)
+    #     self.data['text_rank'] = [summary]
+    #     return summary
 
     # def sumy_sum(self):
     #     # , {k: v for k, v in freqTable.items() if v != 1}
@@ -287,36 +298,51 @@ class Text:
         luhn_sum = luhn.LuhnSummarizer()
         text = ''
         parser = plaintext.PlaintextParser.from_file(self.name + "\\" + self.name + ".txt", Tokenizer('russian'))
-
-        with open(self.name + '\\lsa.txt', 'w', encoding='utf-8') as f:
-            for sen in lsa_sum(parser.document, self.sentences_count):
-                f.write(str(sen))
-                text += str(sen)
-                print(str(sen))
+        for sen in lsa_sum(parser.document, self.sentences_count):
+            text += str(sen)
+            print(str(sen))
 
         self.data['lsa'] = [text]
+        self.print_para_sum(text, 'lsa.txt')
+
         text = ''
 
-        with open(self.name + '\\lex_rank.txt', 'w', encoding='utf-8') as f:
-            for sen in lex_sum(parser.document, self.sentences_count):
-                f.write(str(sen) + ' ')
-                text += str(sen) + ' '
+        for sen in lex_sum(parser.document, self.sentences_count):
+            text += str(sen) + ' '
         self.data['lex_rank'] = [text]
+        self.print_para_sum(text, 'lex_rank.txt')
         text = ''
 
-        with open(self.name + '\\text_rank_sumy.txt', 'w', encoding='utf-8') as f:
-            for sen in text_rank_sum(parser.document, self.sentences_count):
-                f.write(str(sen) + ' ')
-                text += str(sen) + ' '
+        for sen in text_rank_sum(parser.document, self.sentences_count):
+            text += str(sen) + ' '
+        self.print_para_sum(text, 'text_rank_sumy.txt')
         self.data['text_rank_sumy'] = [text]
         text = ''
+        for sen in luhn_sum(parser.document, self.sentences_count):
+            text += str(sen) + ' '
 
-        with open(self.name + '\\luhn.txt', 'w', encoding='utf-8') as f:
-            for sen in luhn_sum(parser.document, self.sentences_count):
-                f.write(str(sen) + ' ')
-                text += str(sen) + ' '
         self.data['luhn'] = [text]
-        print('закончено')
+        self.print_para_sum(text, 'luhn.txt')
+
+        print('Суммаризация закончена')
+
+    def compare_sum(self):
+        scorer = rouge_scorer.RougeScorer(['rouge2', 'rougeL'], use_stemmer=True)
+        sums = ['lsa','luhn','sent_summary','text_rank_sumy','lex_rank']
+        all_scores = [[] for _ in range(len(sums))]
+        for i in range(len(sums)):
+            for j in range(len(sums)):
+                with open(self.name + '\\' + sums[i] + '.txt', 'r', encoding='utf-8') as t:
+                    target = t.read()
+                with open(self.name + '\\' + sums[j] + '.txt', 'r', encoding='utf-8') as p:
+                    prediction = p.read()
+                scores = scorer.score(target,prediction)
+
+
+                all_scores[i].append((scores['rouge2'],scores['rougeL']) )
+        self.scores = all_scores
+        print(all_scores)
+
 
     def contains_word(self, sentence):
         sentence_words = set(sentence.lower().split())
@@ -472,7 +498,6 @@ def build_graph(sentences):
                 if similarity > 0:
                     graph.add_edge(i, j, weight=similarity)
     return graph
-
 
 def rank_sentences(graph):
     scores = pagerank(graph, weight='weight')
