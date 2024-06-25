@@ -160,7 +160,7 @@ def download_audio(link: str):
                 'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
                 'merge_output_format': 'mp4',  # Формат выходного файла
                 'no_warnings':True,
-                'concurrent-fragments':5
+                'concurrent-fragments': 6
             }) as YT):
                 dir = os.path.dirname(os.path.realpath(__file__))
             if (not os.path.exists(dir + right_title)):

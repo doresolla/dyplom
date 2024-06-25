@@ -2,7 +2,7 @@
 import os.path
 
 import audio
-from text import Text, read_subs
+from text import Text
 import whisper
 from os import path
 from PyQt6.QtCore import QRunnable
@@ -91,7 +91,7 @@ class Main(QRunnable):
             text_to_sum.sent_summary()
             text_to_sum.sumy_sum()
             # # text_to_sum.text_rank()
-            text_to_sum.compare_sum()
+            # text_to_sum.compare_sum()
         except Exception as e:
             self.signals.result.emit('Статус: Ошибка во время обработки текста ')
             self.print_signal.result.emit(str(e))
@@ -99,7 +99,7 @@ class Main(QRunnable):
         # text_to_sum.add_data_export('dataset.csv')
         else:
             self.signals.result.emit("Статус: Работа завершена")
-            self.print_signal.result.emit(f"Документ {text_to_sum.name} сохранен. Пожалуйста, проверьте директорию файла")
+            self.print_signal.result.emit(f"Конспекты для видео \"{text_to_sum.name}\" сохранены. Пожалуйста, проверьте директорию файла")
 
 # def start_process(link):
 #     # links = [  # 'https://vk.com/video-51126445_456243401',

@@ -41,7 +41,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # if text == 'Работа завершена':
         #     self.textPrint.setText()
     def update_videoname_label(self, text):
-        self.label_videoname.setText("Название видео "+text)
+        self.label_videoname.setText(f'Название видео: \"{text}')
         # if text == 'Работа завершена':
         #     self.textPrint.setText()
 

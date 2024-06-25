@@ -1,12 +1,13 @@
 import math
 import os.path
 from nltk.corpus import stopwords
-from nltk.stem.snowball import SnowballStemmer
+
 from nltk.stem import WordNetLemmatizer
 from nltk import word_tokenize, sent_tokenize
 import pandas as pd
 from spacy import load
-from chardet import detect
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, RGBColor
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -32,7 +33,27 @@ class Text:
         self.name = name
         if chapters is None:
             chapters = []
-        self.chapters = chapters
+            self.chapters = chapters
+        else:
+            self.chapters = chapters
+            timing_dict = {}
+            with open(self.name + '\\timings.txt', 'r', encoding='utf-8') as file:
+                while True:
+                    # Читаем начальное время
+                    start_time = file.readline().strip()
+                    if not start_time:  # Если строка пустая, значит файл закончился
+                        break
+                    # Читаем текст
+                    text = file.readline().strip()
+                    # Читаем конечное время
+                    end_time = file.readline().strip()
+                    # Добавляем данные в словарь
+                    timing_dict[start_time] = (text, end_time)
+                    # Пропускаем пустую строку
+                    file.readline()
+            chapters = self.find_chapter_for_text(timing_dict)
+            self.chapters_text = self.find_chapter_for_text(timing_dict)
+
 
         recognized_text = ''
         with open(name + '\\' + name + '.txt', encoding='utf-8') as file_text:
@@ -51,6 +72,7 @@ class Text:
         self.sentences_count = math.ceil(SEN_PERCENT * len(self.sentences))
         self.ents, self.freqTable = self.preproccess()
 
+
     def tokenize(self):
         sentences = sent_tokenize(self.text)
         self.sentences = [sent[:len(sent) - 1] for sent in sentences]
@@ -58,7 +80,6 @@ class Text:
         tokens = [token for token in tokens if token not in stopWords]
         self.tokens = list(dict.fromkeys(tokens))
         print("Количество предложений исходного текста:", len(self.sentences))
-
 
     def split_paragraphs(self):
         print('Разделение текста на параграфы')
@@ -103,6 +124,7 @@ class Text:
             sent_para.append((sen, count))
 
         print('paragraphs', len(paragraphs))
+        self.export_to_doc('Исходный текст', paragraphs)
         # print('\n'.join(paragraphs))
         with open(self.name + "\\paragraphs.txt", 'w', encoding="utf-8") as f:
             f.write(text)
@@ -120,7 +142,7 @@ class Text:
             p = self.morph.parse(words[0].lower())[0]
             return p.normal_form
 
-    def sent_para_summary(self, filename,  sentences):
+    def sent_para_summary(self, filename, sentences):
         if not sentences:
             return
         parag = []
@@ -136,6 +158,7 @@ class Text:
                 parag.append(p)
                 p = ''
         self.export_to_doc(filename, parag)
+
     def preproccess(self):
         if not self.tokens or not self.sentences:
             return
@@ -160,7 +183,7 @@ class Text:
         allFreq = 0
         try:
             for sentence in self.sentences:
-                tokens = word_tokenize( " ".join(TOKEN.findall(sentence)), language='russian')
+                tokens = word_tokenize(" ".join(TOKEN.findall(sentence)), language='russian')
                 for word in tokens:
                     word = self.morphy_lemmatize(word).lower()
                     if word in self.freqTable:
@@ -180,7 +203,7 @@ class Text:
             with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
                 for sentence in self.sentences:
                     if sentence in sentenceValue:
-                        if (sentenceValue[sentence] > ((1+SEN_PERCENT) * average)) or (self.contains_word(sentence)):
+                        if (sentenceValue[sentence] > ((1 + SEN_PERCENT) * average)) or (self.contains_word(sentence)):
                             f.write(sentence.strip() + ". ")
         except Exception as e:
             print(e)
@@ -226,11 +249,11 @@ class Text:
         text = ''
         parser = plaintext.PlaintextParser.from_file(self.name + "\\" + self.name + ".txt", Tokenizer('russian'))
 
-
         for sen in lsa_sum(parser.document, self.sentences_count):
             text += str(sen) + ' '
         # self.data['lsa'] = [text]
         self.sent_para_summary("lsa", text)
+
         text = ''
         for sen in lex_sum(parser.document, self.sentences_count):
             text += str(sen) + ' '
@@ -249,7 +272,6 @@ class Text:
         # self.data['luhn'] = [text]
         self.sent_para_summary("luhn", text)
 
-
     def contains_word(self, sentence):
         sentence_words = set(sentence.lower().split())
         words_set = set(str(word).lower() for word in self.ents)
@@ -267,13 +289,13 @@ class Text:
                     prediction = p.read()
 
                 scores = scorer.score(target, prediction)
-                elem = [(scores['rouge2'][0], scores['rouge2'][1], scores['rouge2'][2]), ((scores['rougeL'][0], scores['rougeL'][1], scores['rougeL'][2]))]
+                elem = [(scores['rouge2'][0], scores['rouge2'][1], scores['rouge2'][2]),
+                        ((scores['rougeL'][0], scores['rougeL'][1], scores['rougeL'][2]))]
                 all_scores[i].append(elem)
         df = pd.DataFrame(all_scores)
-        df.to_excel(excel_writer= self.name + '\\scores.xlsx')
+        df.to_excel(excel_writer=self.name + '\\scores.xlsx')
         self.scores = all_scores
         print(all_scores)
-
 
     def add_data_export(self, dataset):
         print()
@@ -290,60 +312,60 @@ class Text:
 
     def export_to_doc(self, name, paragraphs):
         doc = Document()
+        is_para_in_chapter = False
+        head = doc.add_heading(self.name[0].upper() + self.name[1:], level=1)
+        head.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
         if len(self.chapters) > 1:
             timing_dict = {}
             # Добавление заголовка и абзаца
-            with open(self.name + '\\timings.txt', 'r', encoding='utf-8') as file:
-                while True:
-                    # Читаем начальное время
-                    start_time = file.readline().strip()
-                    if not start_time:  # Если строка пустая, значит файл закончился
-                        break
-                    # Читаем текст
-                    text = file.readline().strip()
-                    # Читаем конечное время
-                    end_time = file.readline().strip()
-                    # Добавляем данные в словарь
-                    timing_dict[start_time] = (text, end_time)
-                    # Пропускаем пустую строку
-                    file.readline()
-            chapters = self.find_chapter_for_text(timing_dict)
             summary_chapters = {}
-            for paragraph in paragraphs:
-                paragraph = sent_tokenize(paragraph, language='russian')
-                for chapter, content in chapters.items():
+            for chapter, content in self.chapters_text.items():
+                for paragraph in paragraphs:
+                    paragraph = sent_tokenize(paragraph, language='russian')
                     for sentence in paragraph:
                         if sentence in content:
+                            is_para_in_chapter = True
                             if chapter in summary_chapters:
                                 summary_chapters[chapter] = summary_chapters[chapter] + " " + sentence
                             else:
                                 summary_chapters[chapter] = sentence
+                    if is_para_in_chapter:
+                        summary_chapters[chapter] = summary_chapters[chapter] + "\n"
+                    is_para_in_chapter = False
             for chapter, content in summary_chapters.items():
-                doc.add_heading(chapter)
-                doc.add_paragraph(content)
-
+                head = doc.add_heading(chapter[0].upper() + chapter[1:], level= 2 )
+                font_head = head.style.font
+                font_head.name = 'Times New Roman'
+                font_head.size = Pt(12)  # Устанавливаем размер шрифта
+                font_head.color.rgb =  RGBColor(0, 0, 0)
+                para = doc.add_paragraph(content)
+                para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                font = para.style.font
+                font.name = 'Times New Roman'  # Устанавливаем шрифт
+                font.size = Pt(12)
         else:
-            doc.add_heading(self.name)
             for para in paragraphs:
-                doc.add_paragraph(para)
+                para = doc.add_paragraph(para)
+                para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                font = para.style.font
+                font.name = 'Times New Roman'  # Устанавливаем шрифт
+                font.size = Pt(12)
         doc.save(self.name + '\\' + name + '.docx')
 
     def find_chapter_for_text(self, timing_dict):
-        # summary_chapters = {ch['title'] : '' for ch in self.chapters}
         chapters_sents = {}
-        for index, chapter in enumerate(self.chapters):
-            for start_time, (text, end_time) in timing_dict.items():
-                start_time = math.ceil(int(start_time) / 100)
-                end_time = math.ceil(int(end_time) / 100)
-
-                if start_time <= chapter['end_time']:
-                    if abs(chapter['start_time'] - start_time) <= 2:
-                        title = chapter['title']
-                        if title in chapters_sents:
-                            chapters_sents[title] = chapters_sents[title] + ' ' + text
-                        else:
-                            chapters_sents[title] = text
+        for start_time, (text, end_time) in timing_dict.items():
+            start_time = float(int(start_time) / 100)
+            end_time = int(int(end_time) / 100)
+            for index, chapter in enumerate(self.chapters):
+                if end_time <= chapter['end_time'] and start_time >= chapter['start_time']:
+                    title = chapter['title']
+                    if title in chapters_sents:
+                        chapters_sents[title] = chapters_sents[title] + ' ' + text
+                    else:
+                        chapters_sents[title] = text
+                    break
         return chapters_sents
 
 
