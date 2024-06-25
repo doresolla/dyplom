@@ -13,7 +13,7 @@ class AudioFile:
         self.filename = s
         self.folder_name = self.filename[:s.index('.')] + '\\'
         if abs == '':
-            self.abs_filename = os.path.dirname(os.path.realpath(__file__))+'\\'+self.filename
+            self.abs_filename = os.path.dirname(os.path.realpath(__file__)) + '\\' + self.filename
         else:
             self.abs_filename = abs
         self.duration = duration
@@ -32,11 +32,16 @@ class AudioFile:
         if not (os.path.isfile(dest_folder + self.filename)):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename, dest_folder + self.filename)
-            os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4', dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
+            os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4',
+                       dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
             try:
                 os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
             except Exception as e:
                 print('Нет субтитров', e)
+            try:
+                os.replace(current_dir + '\\chapters.txt', dest_folder + '\\chapters.txt')
+            except Exception as e:
+                print('Нет глав', e)
             self.abs_filename = dest_folder + self.filename
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
@@ -79,7 +84,6 @@ class AudioFile:
     #         print("Конец", f[f.rindex('\\') + 1:])
     #     print("Время выполнения, ", time() - start_time)
 
-
     def recognizePywhisper_cpp(self):
         txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
         # Если такого файла не существует
@@ -87,16 +91,16 @@ class AudioFile:
             start_time = time()
 
             # segments = model.transcribe(self.filename, speed_up=True)
-            segments = self.model_cpp.transcribe(self.folder_name+self.filename)
+            segments = self.model_cpp.transcribe(self.folder_name + self.filename)
             end_time = time()
             recognized_text = ''
-            with open(self.folder_name+'timings.txt', 'w',encoding='utf-8') as f:
+            with open(self.folder_name + 'timings.txt', 'w', encoding='utf-8') as f:
                 for seg in segments:
-                    recognized_text+=seg.text+' '
-                    f.write(f'\n{seg.t0}\n{seg.text}\n{seg.t1}\n')
-            print("Время выполнения, ",end_time - start_time)
-            with open(self.folder_name+txt_file,'w', encoding='utf-8') as f:
-                print(self.folder_name+txt_file)
+                    recognized_text += seg.text + ' '
+                    f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
+            print("Время выполнения, ", end_time - start_time)
+            with open(self.folder_name + txt_file, 'w', encoding='utf-8') as f:
+                print(self.folder_name + txt_file)
                 f.write(recognized_text)
 
             # for f in files:
@@ -117,17 +121,15 @@ class AudioFile:
         width = 1920
         height = 1080
         filename, ext = os.path.splitext(self.abs_filename)
-        print("Имя видео файла",filename+'.mp4')
+        print("Имя видео файла", filename + '.mp4')
         s = "eq(pict_type\,PICT_TYPE_I)"
         command = ["ffmpeg", "-y", "-i", filename + '.mp4', "-vsync", "0", "-vf", f"select={s}", f"-s",
-                   f"{width}x{height}", "-f", "image2", f"{filename}-%03d.jpeg"]
+                   f"{width}x{height}", "-f", "image2", f"{filename + '\\' + filename}-%03d.jpeg"]
         try:
             result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, check=True)
             print("Команда успешно выполнена")
         except subprocess.CalledProcessError as e:
             print(f"Ошибка выполнения команды: {e}")
-
-
 
 
 def download_audio(link: str):
@@ -144,27 +146,32 @@ def download_audio(link: str):
             #     ydl.download(link)
             info_dict = ydl.extract_info(link, download=False)
             # разделение на главы (end_time, start_time, title)
+
+        right_title = check_title(info_dict['title'])
         if ('chapters' in info_dict):
             chapters = info_dict['chapters']
-        right_title = check_title(info_dict['title'])
-        if not (os.path.isfile(right_title+'\\'+right_title+'.mp4') and os.path.isfile(right_title+'\\'+right_title+'.wav')):
+            with open('chapters.txt', 'w', encoding='utf-8') as f:
+                print(chapters)
+                for chapter in chapters:
+                    f.write(f'{chapter['start_time']} \t{chapter['title']}\t{chapter['end_time']}\n')
+
             with (YoutubeDL({
-                # 'format': 'bestvideo[ext=mp4][height<=720]+bestaudio[ext=wav]/mp4',
+                'format': 'best[ext=mp4][height<=720]',
                 'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
                 'merge_output_format': 'mp4',  # Формат выходного файла
+                'no_warnings':True,
+                'concurrent-fragments':5
             }) as YT):
                 dir = os.path.dirname(os.path.realpath(__file__))
-                if (not os.path.exists(dir+right_title)):
-                    YT.download(link)
-                convert_video_to_audio_ffmpeg(right_title + '.mp4')
-        with open(right_title+'\\chapters.txt', 'w', encoding='utf-8') as f:
-            print(chapters)
-            for chapter in chapters:
-                f.write(f'{chapter['start_time']} \t{chapter['title']}\t{chapter['end_time']}\n')
+            if (not os.path.exists(dir + right_title)):
+                YT.download(link)
+            info_dict = YT.extract_info(link, download=False)
+            convert_video_to_audio_ffmpeg(right_title + '.mp4')
         return right_title + '.wav', info_dict['duration'], chapters
     except Exception as e:
         print('Не удалось скачать видео по ссылке')
         print(e)
+
 
 def check_title(title):
     title = title.replace(' ', '_')
@@ -174,11 +181,13 @@ def check_title(title):
     title = title.strip()
     return title
 
+
 def convert_video_to_audio_ffmpeg(video_file, output_ext="wav"):
     filename, ext = os.path.splitext(video_file)
     subprocess.call(["ffmpeg", "-y", "-i", video_file, f"{filename}.{output_ext}"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT)
+
 
 def split_video(file_path: str, start: int, end: int, output_path: str):
     start_time = f'{start // 60}:{start % 60}:00'
@@ -187,6 +196,7 @@ def split_video(file_path: str, start: int, end: int, output_path: str):
         end_time = f'{end // 60}:{end % 60}:30'
     command = f"ffmpeg -i {file_path} -ss {start_time} -to {end_time} -n -c copy {output_path}"
     subprocess.call(command, shell=True)
+
 
 def get_length(input_video):
     result = subprocess.run(

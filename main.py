@@ -1,7 +1,7 @@
 from main_window import Ui_MainWindow
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6.QtCore import QObject, pyqtSignal, QThreadPool
-import sys
+import sys, text, os
 
 from mainAction import Main
 
@@ -12,8 +12,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-        self.signals = WorkerSignals()
-        self.signals.result.connect(self.update_label)
+        self.status = WorkerSignals()
+        self.status.result.connect(self.update_status_label)
         self.video_signal = WorkerSignals()
         self.video_signal.result.connect(self.update_videoname_label)
         self.print_signal = WorkerSignals()
@@ -26,17 +26,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             text = self.lineEdit.text().strip('"')
             if text != '':
-                main_process = Main(self.signals, text, self.video_signal, self.print_signal)
+                main_process = Main(self.status, text, self.video_signal, self.print_signal)
                 self.label_status.setText("Начало работы")
                 QThreadPool.globalInstance().start(main_process)
                 self.textPrint.setText("")
             else:
-                self.textPrint.setText('Введите корректное значение')
+                self.textPrint.setText('Введите корректное значение ссылки на видео')
         except Exception as e:
             text = self.textPrint.toPlainText()
             self.textPrint.setText(text + '\n' + e)
 
-    def update_label(self, text):
+    def update_status_label(self, text):
         self.label_status.setText(text)
         # if text == 'Работа завершена':
         #     self.textPrint.setText()
@@ -62,8 +62,6 @@ if __name__ == '__main__':
     sys.excepthook = show_exception_and_exit
     app = QApplication(sys.argv)
     window = MainWindow()
-    try:
-        window.show()
-        sys.exit(app.exec())
-    except Exception as e:
-        print(e)
+    window.show()
+    sys.exit(app.exec())
+

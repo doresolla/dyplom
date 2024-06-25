@@ -27,9 +27,6 @@ class Ui_MainWindow(object):
         self.lineEdit = QtWidgets.QLineEdit(parent=self.centralwidget)
         self.lineEdit.setObjectName("lineEdit")
         self.horizontalLayout.addWidget(self.lineEdit)
-        self.settings = QtWidgets.QToolButton(parent=self.centralwidget)
-        self.settings.setObjectName("settings")
-        self.horizontalLayout.addWidget(self.settings)
         self.verticalLayout.addLayout(self.horizontalLayout)
         self.startButton = QtWidgets.QPushButton(parent=self.centralwidget)
         self.startButton.setObjectName("startButton")
@@ -61,7 +58,6 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Автоматическое конспектирование видео"))
         self.label.setText(_translate("MainWindow", "Ссылка на видео ( или путь к файлу)"))
-        self.settings.setText(_translate("MainWindow", "Параметры"))
         self.startButton.setText(_translate("MainWindow", "Сгенерировать конспект"))
         self.label_videoname.setText(_translate("MainWindow", "Название видео"))
         self.label_status.setText(_translate("MainWindow", "Статус: "))

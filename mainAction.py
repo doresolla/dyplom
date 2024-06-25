@@ -31,10 +31,12 @@ class Main(QRunnable):
                         s = f.readline()
                         dict['start_time'], dict['title'], dict['end_time'] = s.split('\t')
                         chapters.append(dict)
+                audio.convert_video_to_audio_ffmpeg(self.link)
                 file = audio.AudioFile(filename, duration, chapters, False, self.link)
             except Exception as e:
                 print(e)
-                self.print_signal.result.emit("Ошибка: убедитесь, что файл доступен." + str(e))
+                self.signals.result.emit("Ошибка: убедитесь, что файл доступен")
+                self.print_signal.result.emit(str(e))
         else:
             self.signals.result.emit("Статус: Скачивание видео")
             isThere = False
@@ -44,7 +46,7 @@ class Main(QRunnable):
             file = audio.AudioFile(filename, duration, chapters, isThere)
 
         if isinstance(file, audio.AudioFile):
-            self.video.result.emit(file.filename)
+            self.video.result.emit(file.filename[:file.filename.rindex('.')])
             self.process_file(file)
 
     def process_file(self, file):
@@ -76,7 +78,8 @@ class Main(QRunnable):
             except Exception as e:
                 print('Ошибка при распознавании голоса')
                 print(e)
-                self.print_signal.result.emit("Ошибка при распознавании голоса:" + str(e))
+                self.signals.result.emit("Статус: Ошибка при распознавании голоса")
+                self.print_signal.result.emit(str(e))
             else:
                 print("Распознавание прошло успешно")
                 self.signals.result.emit("Статус: Распознавание прошло успешно")
@@ -87,12 +90,16 @@ class Main(QRunnable):
         try:
             text_to_sum.sent_summary()
             text_to_sum.sumy_sum()
-            text_to_sum.text_rank()
+            # # text_to_sum.text_rank()
+            text_to_sum.compare_sum()
         except Exception as e:
-            self.print_signal.result.emit('Ошибка во время обработки текста ' + str(e))
+            self.signals.result.emit('Статус: Ошибка во время обработки текста ')
+            self.print_signal.result.emit(str(e))
             print(e)
-        text_to_sum.add_data_export('dataset.csv')
-        self.signals.result.emit("Статус: Работа завершена")
+        # text_to_sum.add_data_export('dataset.csv')
+        else:
+            self.signals.result.emit("Статус: Работа завершена")
+            self.print_signal.result.emit(f"Документ {text_to_sum.name} сохранен. Пожалуйста, проверьте директорию файла")
 
 # def start_process(link):
 #     # links = [  # 'https://vk.com/video-51126445_456243401',
