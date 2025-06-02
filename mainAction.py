@@ -18,7 +18,7 @@ class Main(QRunnable):
 
     def run(self):
         file = ''
-        # если на компьютере нет такой директории link
+        # если на компьютере такая директория link
         if path.exists(path.dirname(self.link)):
             try:
                 filename = self.link[self.link.rindex('\\') + 1:]
@@ -40,10 +40,13 @@ class Main(QRunnable):
         else:
             self.signals.result.emit("Статус: Скачивание видео")
             isThere = False
-            filename, duration, chapters = audio.download_audio(self.link)
-            print(chapters)
-            self.signals.result.emit("Статус: Скачивание видео завершено")
-            file = audio.AudioFile(filename, duration, chapters, isThere)
+            try:
+                filename, duration, chapters = audio.download(self.link)
+                print(chapters)
+                self.signals.result.emit("Статус: Скачивание видео завершено")
+                file = audio.AudioFile(filename, duration, chapters, isThere)
+            except Exception as e:
+                print(e)
 
         if isinstance(file, audio.AudioFile):
             self.video.result.emit(file.filename[:file.filename.rindex('.')])
@@ -101,13 +104,96 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: Работа завершена")
             self.print_signal.result.emit(f"Конспекты для видео \"{text_to_sum.name}\" сохранены. Пожалуйста, проверьте директорию файла")
 
-# def start_process(link):
-#     # links = [  # 'https://vk.com/video-51126445_456243401',
-#     #     'https://www.youtube.com/watch?v=k9wK2FThEsk&t',
-#     #     'https://www.youtube.com/watch?v=I_ReFF3qiQ8',
-#     #     # 'https://www.youtube.com/watch?v=jR6x5PmBL2I',
-#     #     #  'https://www.youtube.com/watch?v=6dYPBA7-1Wg',
-#     #     #   'https://www.youtube.com/watch?v=ML5tP8m6SHw',
-#     #     #    'https://www.youtube.com/watch?v=k9 wK2FThEsk&t'
-#     # ]
-#     # for link in links:
+def generate_summary(url, video_id, format='docx', ratio=0.5):
+    summary_path = ''
+    file = ''
+    # если на компьютере такая директория link
+    if path.exists(path.dirname(url)):
+        try:
+            filename = url[url.rindex('\\') + 1:]
+            print(filename)
+            duration = audio.get_length(url)
+            chapters = []
+            dict = {}
+            if (os.path.isfile(filename[:filename.rindex('.')] + '\\chapters.txt')):
+                with open(filename[:filename.rindex('.')] + '\\chapters.txt', 'r', encoding='utf-8') as f:
+                    s = f.readline()
+                    dict['start_time'], dict['title'], dict['end_time'] = s.split('\t')
+                    chapters.append(dict)
+            audio.convert_video_to_audio_ffmpeg(url)
+            file = audio.AudioFile(filename, duration, chapters, False, url)
+        except Exception as e:
+            print(e)
+            print("Ошибка: убедитесь, что файл доступен")
+            print(str(e))
+            audio.report_error(video_id, e)
+    else:
+        print("Статус: Скачивание видео")
+        isThere = False
+        try:
+            filename, duration, chapters = audio.download(url)
+            print(chapters)
+            print("Статус: Скачивание видео завершено")
+            file = audio.AudioFile(filename, duration, chapters, isThere, video_id=video_id)
+        except Exception as e:
+            print(e)
+            audio.report_error(video_id, e)
+
+    if isinstance(file, audio.AudioFile):
+        print(file.filename[:file.filename.rindex('.')])
+        summary_path = process_file(file, format, ratio)
+        print(f'file.filename={file.filename}')
+        os.rename(summary_path, file.filename)
+
+    return summary_path
+def process_file(file, format, video_id, ratio=0.5):
+    # start = file.duration // 10 // 60
+    # current_dir = path.dirname(path.realpath(__file__))
+    # dest_folder = path.join(current_dir, file.folder_name)
+    # cut = str(dest_folder + 'cut.wav')
+    # audio.split_video(file.folder_name + file.filename, start, start, cut)
+    # model = whisper.load_model("small", in_memory=True)
+    # cut = whisper.load_audio(cut)
+    # cut = whisper.pad_or_trim(cut)
+    # mel = whisper.log_mel_spectrogram(cut).to(model.device)
+    # _, probs = model.detect_language(mel)
+    #
+    # output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+    # print("Вероятности появления различных языков:", output)
+    # lang = output[0]
+    # print("Язык - ", lang)
+    # если есть неопределенность в языке
+    # if output[1][1] > 0.2 or lang[0] != 'ru':
+    #     print(output[1])
+    #     print("Поддержка других языков недоступна")
+    #     return
+    if not (path.isfile(file.folder_name+file.filename[:file.filename.rindex('.')] + '.txt')):
+        try:
+            print('Статус: идет распознавание речи, пожалуйста, подождите')
+            file.recognizePywhisper_cpp()
+        except Exception as e:
+            print('Ошибка при распознавании голоса')
+            print(e)
+            audio.report_error(video_id, e)
+            print("Статус: Ошибка при распознавании голоса")
+            print(str(e))
+        else:
+            print("Распознавание прошло успешно")
+            print("Статус: Распознавание прошло успешно")
+    # file.extract_image()
+    name = file.filename[:file.filename.index('.')]
+    print("Статус: Выполняется обработка текста")
+    text_to_sum = Text(name, file.chapters,SEN_PERCENT=ratio)
+    try:
+        text_to_sum.sent_summary()
+        filename_pathes = text_to_sum.sumy_sum(format)
+        text_to_sum.compare_sum()
+        print("Статус: Работа завершена")
+        print(f"Конспекты для видео \"{text_to_sum.name}\" сохранены. Пожалуйста, проверьте директорию файла")
+        return filename_pathes[0]
+    except Exception as e:
+        print('Статус: Ошибка во время обработки текста ')
+        print(str(e))
+        print(e)
+        audio.report_error(video_id, e)
+    # text_to_sum.add_data_export('dataset.csv')

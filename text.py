@@ -1,11 +1,10 @@
 import math
 import os.path
 from nltk.corpus import stopwords
-
 from nltk.stem import WordNetLemmatizer
 from nltk import word_tokenize, sent_tokenize
 import pandas as pd
-from spacy import load
+from spacy import load, cli
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor
 import numpy as np
@@ -23,14 +22,17 @@ from math import exp
 from re import compile, sub
 from docx import Document
 
-SEN_PERCENT = 0.5
+from audio import report_error
+# cli.download('ru_core_news_md')
 TOKEN = compile('\w+')
 stopWords = set(stopwords.words("russian"))
 
 
 class Text:
-    def __init__(self, name, chapters=None):
+    def __init__(self, name, video_id, chapters=None, SEN_PERCENT=0.5):
+
         self.name = name
+        self.video_id = video_id
         if chapters is None:
             chapters = []
             self.chapters = chapters
@@ -51,7 +53,6 @@ class Text:
                     timing_dict[start_time] = (text, end_time)
                     # Пропускаем пустую строку
                     file.readline()
-            chapters = self.find_chapter_for_text(timing_dict)
             self.chapters_text = self.find_chapter_for_text(timing_dict)
 
 
@@ -69,9 +70,10 @@ class Text:
         self.paragraphs, self.sents_per_para = self.split_paragraphs()
         self.morph = MorphAnalyzer()
         self.model = load('ru_core_news_md', exclude=['parser', 'attribute_ruler', 'morphologizer'])
-        self.sentences_count = math.ceil(SEN_PERCENT * len(self.sentences))
-        self.ents, self.freqTable = self.preproccess()
+        self.ratio = SEN_PERCENT
+        self.sentences_count = math.ceil(self.ratio * len(self.sentences))
 
+        self.ents, self.freqTable = self.preproccess()
 
     def tokenize(self):
         sentences = sent_tokenize(self.text)
@@ -96,39 +98,43 @@ class Text:
         # Embed sentences
         embeddings = model.encode(self.sentences)
         print(embeddings.shape)
+        try:
+            # Normalize the embeddings
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            embeddings = embeddings / norms
+            # Create similarities matrix
+            similarities = cosine_similarity(embeddings)
+            activated_similarities = activate_similarities(similarities, p_size=10)
 
-        # Normalize the embeddings
-        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-        embeddings = embeddings / norms
-        # Create similarities matrix
-        similarities = cosine_similarity(embeddings)
-        activated_similarities = activate_similarities(similarities, p_size=10)
+            minmimas = argrelextrema(activated_similarities, np.less, order=2)
+            # Create empty string
+            split_points = [each for each in minmimas[0]]
+            text = ''
+            paragraphs = []
+            para = ''
+            count = 0
+            sent_para = []
+            for num, sen in enumerate(self.sentences):
+                if num in split_points:
+                    count += 1
+                    paragraphs.append(para)
+                    para = f'{sen}. '
+                    text += f'\n {sen}. '
+                else:
+                    text += f'{sen}. '
+                    para += f'{sen}. '
+                sent_para.append((sen, count))
 
-        minmimas = argrelextrema(activated_similarities, np.less, order=2)
-        # Create empty string
-        split_points = [each for each in minmimas[0]]
-        text = ''
-        paragraphs = []
-        para = ''
-        count = 0
-        sent_para = []
-        for num, sen in enumerate(self.sentences):
-            if num in split_points:
-                count += 1
-                paragraphs.append(para)
-                para = f'{sen}. '
-                text += f'\n {sen}. '
-            else:
-                text += f'{sen}. '
-                para += f'{sen}. '
-            sent_para.append((sen, count))
+            print('paragraphs', len(paragraphs))
+            self.export_to_doc('Исходный текст', paragraphs)
+            # print('\n'.join(paragraphs))
+            with open(self.name + "\\paragraphs.txt", 'w', encoding="utf-8") as f:
+                f.write(text)
+            return paragraphs, sent_para
+        except Exception as e:
+            print(e)
+            report_error(self.video_id, e)
 
-        print('paragraphs', len(paragraphs))
-        self.export_to_doc('Исходный текст', paragraphs)
-        # print('\n'.join(paragraphs))
-        with open(self.name + "\\paragraphs.txt", 'w', encoding="utf-8") as f:
-            f.write(text)
-        return paragraphs, sent_para
 
     def morphy_lemmatize(self, text):
         words = text.split()  # разбиваем текст на слова
@@ -195,6 +201,7 @@ class Text:
         except Exception as e:
             print(e)
             print(repr(e))
+            report_error(self.video_id, e)
 
         average = int(allFreq / len(sentenceValue))
 
@@ -203,12 +210,14 @@ class Text:
             with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
                 for sentence in self.sentences:
                     if sentence in sentenceValue:
-                        if (sentenceValue[sentence] > ((1 + SEN_PERCENT) * average)) or (self.contains_word(sentence)):
+                        if (sentenceValue[sentence] > ((1 + self.ratio) * average)) or (self.contains_word(sentence)):
                             f.write(sentence.strip() + ". ")
+            return self.name + "\\" + "sent_summary.txt"
         except Exception as e:
             print(e)
             print(repr(e))
             print(type(e).__name__)
+            report_error(self.video_id, e)
 
     # def text_rank(self):
     #     sentence_paragraph_map = []
@@ -240,7 +249,7 @@ class Text:
     #     # self.data['text_rank'] = [summary]
     #     return summary
 
-    def sumy_sum(self):
+    def sumy_sum(self, format='docx'):
         # , {k: v for k, v in freqTable.items() if v != 1}
         lsa_sum = lsa.LsaSummarizer()
         lex_sum = lex_rank.LexRankSummarizer()
@@ -271,6 +280,8 @@ class Text:
             text += str(sen) + ' '
         # self.data['luhn'] = [text]
         self.sent_para_summary("luhn", text)
+        names = [f'{self.name}\\{x}.{format}' for x in ['lsa','lex_rank','text_rank_sumy','luhn']]
+        return names
 
     def contains_word(self, sentence):
         sentence_words = set(sentence.lower().split())
@@ -395,7 +406,6 @@ def build_similarity_matrix(sentences):
     vectors = vectorizer.toarray()
     similarity_matrix = cosine_similarity(vectors)
     return similarity_matrix
-
 
 def pagerank_sentences(sentences, similarity_matrix):
     nx_graph = from_numpy_array(similarity_matrix)

@@ -1,6 +1,8 @@
 import re
 from time import time
-from yt_dlp import YoutubeDL
+
+import requests
+from pytubefix import YouTube
 import subprocess
 
 from pywhispercpp.model import Model
@@ -9,7 +11,7 @@ import os
 
 class AudioFile:
 
-    def __init__(self, s, duration, chapters, isThere, abs=''):
+    def __init__(self, s, duration, chapters, isThere,video_id, abs=''):
         self.filename = s
         self.folder_name = self.filename[:s.index('.')] + '\\'
         if abs == '':
@@ -18,6 +20,7 @@ class AudioFile:
             self.abs_filename = abs
         self.duration = duration
         self.chapters = chapters
+        self.video_id = video_id
         self.model_cpp = Model('small', n_threads=6, language='ru')
         if not isThere:
             self.create_folder()
@@ -35,11 +38,11 @@ class AudioFile:
             os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4',
                        dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
             try:
-                os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + '\\sub.srt.ru.vtt')
+                os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
             except Exception as e:
                 print('Нет субтитров', e)
             try:
-                os.replace(current_dir + '\\chapters.txt', dest_folder + '\\chapters.txt')
+                os.replace(current_dir + '\\chapters.txt', dest_folder + 'chapters.txt')
             except Exception as e:
                 print('Нет глав', e)
             self.abs_filename = dest_folder + self.filename
@@ -116,6 +119,7 @@ class AudioFile:
             #     file.write(result['text'] + ' ')
         except Exception as e:
             print(e)
+            report_error(self.video_id, e)
 
     def extract_image(self):
         width = 1920
@@ -131,47 +135,64 @@ class AudioFile:
         except subprocess.CalledProcessError as e:
             print(f"Ошибка выполнения команды: {e}")
 
+def report_error(video_id, message):
+    res = requests.post(
+        "https://web-production-fdfb.up.railway.app/api/report_error/",
+        data={"id": video_id, "message": message}
+    )
+    print(f"Ошибка сохранена: {res.status_code}")
 
-def download_audio(link: str):
+def download(link: str):
     try:
-        chapters = []
-        with (YoutubeDL({
-            'writeautomaticsub': True,
-            'subtitlesformat': 'srt',
-            'skip_download': True,
-            'subtitleslangs': ['ru'],
-            'outtmpl': '/tmp/sub.srt'
-        })) as ydl:
-            # if to_download:
-            #     ydl.download(link)
-            info_dict = ydl.extract_info(link, download=False)
-            # разделение на главы (end_time, start_time, title)
+        proxies={'http':'http://127.0.0.1:8881',
+                 'https':'http://127.0.0.1:8881'}
 
-        right_title = check_title(info_dict['title'])
-        if ('chapters' in info_dict):
-            chapters = info_dict['chapters']
-            with open('chapters.txt', 'w', encoding='utf-8') as f:
-                print(chapters)
-                for chapter in chapters:
-                    f.write(f'{chapter['start_time']} \t{chapter['title']}\t{chapter['end_time']}\n')
+        yt = YouTube(url=link, proxies=proxies)
+        right_title = check_title(yt.title)
 
-            with (YoutubeDL({
-                'format': 'best[ext=mp4][height<=720]',
-                'outtmpl': '{}.%(ext)s'.format(right_title),  # Имя файла будет основано на названии видео
-                'merge_output_format': 'mp4',  # Формат выходного файла
-                'no_warnings':True,
-                'concurrent-fragments': 6
-            }) as YT):
-                dir = os.path.dirname(os.path.realpath(__file__))
-            if (not os.path.exists(dir + right_title)):
-                YT.download(link)
-            info_dict = YT.extract_info(link, download=False)
-            convert_video_to_audio_ffmpeg(right_title + '.mp4')
-        return right_title + '.wav', info_dict['duration'], chapters
+        # Скачиваем только аудио (mp4 контейнер с AAC)
+        video_stream = yt.streams. \
+            filter(type='video'). \
+            order_by('resolution'). \
+            desc().first()
+        audio_stream = yt.streams. \
+            filter(mime_type='audio/mp4'). \
+            order_by('filesize'). \
+            desc().first()
+        if not audio_stream:
+            print("Аудио-поток не найден")
+            return None, 0, []
+        print('Download video...')
+        video_stream.download()
+        print('\nDownload audio...')
+        audio_stream.download()
+        # wav_filename = f"{right_title}.wav"
+        combine(audio_stream.default_filename, video_stream.default_filename,
+                f'{yt.title}.mp4')
+        # Конвертация в WAV через ffmpeg
+        # subprocess.run([
+        #     "ffmpeg", "-y",  # -y = overwrite
+        #     "-i", mp4_filename,
+        #     "-ac", "1",  # моно (можно убрать)
+        #     "-ar", "16000",  # частота дискретизации 16kHz (можно изменить)
+        #     wav_filename
+        # ], check=True)
+
+        duration = yt.length
+        return audio_stream.default_filename, duration, []
+
     except Exception as e:
-        print('Не удалось скачать видео по ссылке')
+        print("Ошибка при загрузке и конвертации:")
         print(e)
+        return None, 0, []
 
+def combine(audio: str, video: str, output: str) -> None:
+    if os.path.exists(output):
+        os.remove(output)
+    code = os.system(f'.\\ffmpeg.exe -i "{video}" -i "{audio}" -c copy "{output}"')
+    if code != 0:
+        pass
+    raise SystemError(code)
 
 def check_title(title):
     title = title.replace(' ', '_')
@@ -203,3 +224,5 @@ def get_length(input_video):
         ['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1',
          input_video], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return float(result.stdout.strip())
+
+
