@@ -1,8 +1,8 @@
 # -*- coding: utf-8
 import os.path
 
-import audio
-from text import Text
+from . import audio
+from .text import Text
 # import whisper
 from os import path
 from PyQt6.QtCore import QRunnable

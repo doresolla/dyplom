@@ -117,8 +117,8 @@ class AudioFile:
             # with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
             #     file.write(result['text'] + ' ')
         except Exception as e:
-            print(e)
-            report_error(self.video_id, e)
+            error_message = e
+            return error_message
 
     def extract_image(self):
         width = 1920
