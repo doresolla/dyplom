@@ -110,9 +110,8 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
     # если на компьютере такая директория link
     if path.exists(path.dirname(url)):
         try:
-            filename = url[url.rindex('\\') + 1:]
-            print(filename)
-            duration = audio.get_length(url)
+            filename = os.path.basename(url)
+            print(f'ID-{video_id}: Название видео:{filename}')
             chapters = []
             dict = {}
             if (os.path.isfile(filename[:filename.rindex('.')] + '\\chapters.txt')):
@@ -120,32 +119,34 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
                     s = f.readline()
                     dict['start_time'], dict['title'], dict['end_time'] = s.split('\t')
                     chapters.append(dict)
+                print(f'ID-{video_id}: Скачаны chapters')
             audio.convert_video_to_audio_ffmpeg(url)
-            file = audio.AudioFile(filename, duration, chapters, False, url)
+            print(f'ID-{video_id}: Видео {filename} конвертировано в аудио')
+            file = audio.AudioFile(filename, chapters, False, url)
         except Exception as e:
-            print(e)
-            print("Ошибка: убедитесь, что файл доступен")
-            print(str(e))
-            audio.report_error(video_id, e)
-    else:
-        print("Статус: Скачивание видео")
-        isThere = False
-        try:
-            filename, duration, chapters = audio.download(url)
-            print(chapters)
-            print("Статус: Скачивание видео завершено")
-            file = audio.AudioFile(filename, duration, chapters, isThere, video_id=video_id)
-        except Exception as e:
-            print(e)
-            audio.report_error(video_id, e)
+            error_message = f"ID-{video_id}:Ошибка: убедитесь, что файл доступен {e}"
+            print(error_message)
+            return None, error_message
+    # else:
+    #     print("Статус: Скачивание видео")
+    #     isThere = False
+    #     try:
+    #         filename, duration, chapters = audio.download(url)
+    #         print(chapters)
+    #         print("Статус: Скачивание видео завершено")
+    #         file = audio.AudioFile(filename, duration, chapters, isThere, video_id=video_id)
+    #     except Exception as e:
+    #         print(e)
+    #         audio.report_error(video_id, e)
 
     if isinstance(file, audio.AudioFile):
-        print(file.filename[:file.filename.rindex('.')])
-        summary_path = process_file(file, format, ratio)
-        print(f'file.filename={file.filename}')
+        print(f'ID-{video_id}:{os.path.splitext(file.filename)[0]}')
+        summary_path, error_message = process_file(file, format, ratio)
+
+        print(f'ID-{video_id}: filename={file.filename}')
         os.rename(summary_path, file.filename)
 
-    return summary_path
+    return summary_path, error_message
 def process_file(file, format, video_id, ratio=0.5):
     # start = file.duration // 10 // 60
     # current_dir = path.dirname(path.realpath(__file__))
@@ -167,33 +168,32 @@ def process_file(file, format, video_id, ratio=0.5):
     #     print(output[1])
     #     print("Поддержка других языков недоступна")
     #     return
-    if not (path.isfile(file.folder_name+file.filename[:file.filename.rindex('.')] + '.txt')):
+    name = os.path.splitext(file.filename)[0]
+    txt_filename = name + '.txt'
+    txt_path = os.path.join(file.folder_name, txt_filename)
+    if not (path.isfile(txt_path)):
         try:
-            print('Статус: идет распознавание речи, пожалуйста, подождите')
+            print(f'ID-{video_id}: Идет распознавание речи, пожалуйста, подождите')
             file.recognizePywhisper_cpp()
         except Exception as e:
-            print('Ошибка при распознавании голоса')
-            print(e)
-            audio.report_error(video_id, e)
-            print("Статус: Ошибка при распознавании голоса")
-            print(str(e))
+            error_message = f'ID-{video_id}: Ошибка при распознавании голоса {e}'
+            print(error_message)
+            return None, error_message
         else:
-            print("Распознавание прошло успешно")
-            print("Статус: Распознавание прошло успешно")
-    # file.extract_image()
-    name = file.filename[:file.filename.index('.')]
-    print("Статус: Выполняется обработка текста")
+            print(f"ID-{video_id}:Распознавание прошло успешно")
+    print(f"ID-{video_id}: Выполняется обработка текста")
     text_to_sum = Text(name, file.chapters,SEN_PERCENT=ratio)
     try:
         text_to_sum.sent_summary()
         filename_pathes = text_to_sum.sumy_sum(format)
         text_to_sum.compare_sum()
-        print("Статус: Работа завершена")
-        print(f"Конспекты для видео \"{text_to_sum.name}\" сохранены. Пожалуйста, проверьте директорию файла")
-        return filename_pathes[0]
+        print(f"ID-{video_id}: Работа завершена")
+        print(f"ID-{video_id}: Конспекты для видео \"{text_to_sum.name}\" сохранены")
+        ### TODO : выбор алгоритма суммаризации
+        return filename_pathes[0], None
     except Exception as e:
-        print('Статус: Ошибка во время обработки текста ')
-        print(str(e))
-        print(e)
-        audio.report_error(video_id, e)
+        error_message = f'ID-{video_id}: Ошибка во время обработки текста {e}'
+        print(error_message)
+        return None, error_message
+        # audio.report_error(video_id, e)
     # text_to_sum.add_data_export('dataset.csv')

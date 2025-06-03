@@ -11,14 +11,13 @@ import os
 
 class AudioFile:
 
-    def __init__(self, s, duration, chapters, isThere,video_id, abs=''):
+    def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = s
         self.folder_name = self.filename[:s.index('.')] + '\\'
         if abs == '':
             self.abs_filename = os.path.dirname(os.path.realpath(__file__)) + '\\' + self.filename
         else:
             self.abs_filename = abs
-        self.duration = duration
         self.chapters = chapters
         self.video_id = video_id
         self.model_cpp = Model('small', n_threads=6, language='ru')
@@ -135,12 +134,6 @@ class AudioFile:
         except subprocess.CalledProcessError as e:
             print(f"Ошибка выполнения команды: {e}")
 
-def report_error(video_id, message):
-    res = requests.post(
-        "https://web-production-fdfb.up.railway.app/api/report_error/",
-        data={"id": video_id, "message": message}
-    )
-    print(f"Ошибка сохранена: {res.status_code}")
 
 def download(link: str):
     try:
@@ -178,8 +171,7 @@ def download(link: str):
         #     wav_filename
         # ], check=True)
 
-        duration = yt.length
-        return audio_stream.default_filename, duration, []
+        return audio_stream.default_filename, []
 
     except Exception as e:
         print("Ошибка при загрузке и конвертации:")
