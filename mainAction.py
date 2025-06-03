@@ -3,7 +3,7 @@ import os.path
 
 import audio
 from text import Text
-import whisper
+# import whisper
 from os import path
 from PyQt6.QtCore import QRunnable
 
@@ -58,21 +58,21 @@ class Main(QRunnable):
         dest_folder = path.join(current_dir, file.folder_name)
         cut = str(dest_folder + 'cut.wav')
         audio.split_video(file.folder_name + file.filename, start, start, cut)
-        model = whisper.load_model("small", in_memory=True)
-        cut = whisper.load_audio(cut)
-        cut = whisper.pad_or_trim(cut)
-        mel = whisper.log_mel_spectrogram(cut).to(model.device)
-        _, probs = model.detect_language(mel)
-
-        output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
-        print("Вероятности появления различных языков:", output)
-        lang = output[0]
-        print("Язык - ", lang)
-        # если есть неопределенность в языке
-        if output[1][1] > 0.2 or lang[0] != 'ru':
-            print(output[1])
-            self.print_signal.result.emit("Поддержка других языков недоступна")
-            return
+        # model = whisper.load_model("small", in_memory=True)
+        # cut = whisper.load_audio(cut)
+        # cut = whisper.pad_or_trim(cut)
+        # mel = whisper.log_mel_spectrogram(cut).to(model.device)
+        # _, probs = model.detect_language(mel)
+        #
+        # output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+        # print("Вероятности появления различных языков:", output)
+        # lang = output[0]
+        # print("Язык - ", lang)
+        # # если есть неопределенность в языке
+        # if output[1][1] > 0.2 or lang[0] != 'ru':
+        #     print(output[1])
+        #     self.print_signal.result.emit("Поддержка других языков недоступна")
+        #     return
         if not (path.isfile(file.folder_name+file.filename[:file.filename.rindex('.')] + '.txt')):
             try:
                 # file.recognizeSpeech([file.folder_name + file.filename])
