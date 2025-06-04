@@ -38,7 +38,7 @@ class Text:
         else:
             self.chapters = chapters
             timing_dict = {}
-            with open(self.name + '\\timings.txt', 'r', encoding='utf-8') as file:
+            with open(os.path.join(self.name,'timings.txt'), 'r', encoding='utf-8') as file:
                 while True:
                     # Читаем начальное время
                     start_time = file.readline().strip()
@@ -56,11 +56,12 @@ class Text:
 
 
         recognized_text = ''
-        with open(name + '\\' + name + '.txt', encoding='utf-8') as file_text:
+        with open(os.path.join(self.name, self.name + '.txt'), encoding='utf-8') as file_text:
             chunk = file_text.read(10000)
             while chunk:
                 recognized_text = recognized_text + chunk
                 chunk = file_text.read(10000)
+        print('Прочитан распознанный текст')
         self.text = recognized_text
         self.text_no_punkt = " ".join(TOKEN.findall(self.text))
         # self.data = {"Исходный текст": [recognized_text], "Без пунктуации": [text_no_punkt]}

@@ -48,82 +48,26 @@ class AudioFile:
             #     os.replace(current_dir + '\\chapters.txt', dest_folder + 'chapters.txt')
             # except Exception as e:
             #     print('Нет глав', e)
-            self.abs_filename = dest_folder + self.filename
+            self.abs_filename = os.path.join(dest_folder, self.filename)
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
-
-    # def split(self, abs_filename):
-    #     splits = []
-    #     total_mins = ceil(self.duration / 60)
-    #     counter = 0
-    #     try:
-    #         if (10 < total_mins):
-    #             for i in range(0, total_mins, 5):
-    #                 counter += 1
-    #                 out = f'.\\{self.folder_name}{counter}_{self.filename}'
-    #                 split_video(abs_filename, i, i + 5, out)
-    #                 splits.append(out)
-    #
-    #         else:
-    #             out = f'.\\{self.folder_name}\\{self.filename}'
-    #             splits.append(out)
-    #     except Exception as e:
-    #         print("Ошибка при разделении")
-    #         print(e)
-    #     else:
-    #         print("Разделение прошло успешно")
-    #         return splits
-
-    # def recognizeSpeech(self, files):
-    #     # файл с расшифровкой речи
-    #     txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
-    #     start_time = time()
-    #     for f in files:
-    #         # текущий файл
-    #         print('Start', f[f.rindex('\\') + 1:])
-    #         result = self.model.transcribe(f, fp16=False, language='ru')
-    #         if not (os.path.isfile(self.folder_name + txt_file)):
-    #             param = 'w'  # создать файл и записать в него
-    #         else:
-    #             param = 'a+'  # добавить данные в конец файла
-    #         with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
-    #             file.write(result['text'] + ' ')
-    #         print("Конец", f[f.rindex('\\') + 1:])
-    #     print("Время выполнения, ", time() - start_time)
 
     def recognizePywhisper_cpp(self):
         txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
         # Если такого файла не существует
-        try:
-            start_time = time()
-            print('Началось распознавание')
-            # segments = model.transcribe(self.filename, speed_up=True)
-            segments = self.model_cpp.transcribe(self.folder_name + self.filename)
-            end_time = time()
-            recognized_text = ''
-            with open(self.folder_name + 'timings.txt', 'w', encoding='utf-8') as f:
-                for seg in segments:
-                    recognized_text += seg.text + ' '
-                    f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
-            print("Время выполнения, ", end_time - start_time)
-            with open(self.folder_name + txt_file, 'w', encoding='utf-8') as f:
-                print(self.folder_name + txt_file)
-                f.write(recognized_text)
-
-            # for f in files:
-            #     print(f)
-            #     result = w.transcribe_from_file(f)
-            #     print(result)
-            #     print('Конец', f)
-            # if not (os.path.isfile(self.folder_name + txt_file)):
-            #     param = 'w'  # создать файл и записать в него
-            # else:
-            #     param = 'a+'  # добавить данные в конец файла
-            # with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
-            #     file.write(result['text'] + ' ')
-        except Exception as e:
-            error_message = f'Ошибка во время распознавания голоса: {e}'
-            print(error_message)
-            return error_message
+        start_time = time()
+        print('Началось распознавание')
+        # segments = model.transcribe(self.filename, speed_up=True)
+        segments = self.model_cpp.transcribe(self.abs_filename)
+        end_time = time()
+        recognized_text = ''
+        with open(os.path.join(self.folder_name , 'timings.txt'), 'w', encoding='utf-8') as f:
+            for seg in segments:
+                recognized_text += seg.text + ' '
+                f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
+        print("Время выполнения, ", end_time - start_time)
+        with open(os.path.join(self.folder_name, txt_file), 'w', encoding='utf-8') as f:
+            print(f'В файл {os.path.join(self.folder_name, txt_file)} записан текст из аудио')
+            f.write(recognized_text)
 
     def extract_image(self):
         width = 1920
