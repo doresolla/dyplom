@@ -107,6 +107,7 @@ class Main(QRunnable):
 def generate_summary(url, video_id, format='docx', ratio=0.5):
     summary_path = ''
     file = ''
+    error_message = None
     # если на компьютере такая директория link
     if path.exists(path.dirname(url)):
         try:
@@ -142,7 +143,7 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
 
     if isinstance(file, audio.AudioFile):
         print(f'ID-{video_id}:{os.path.splitext(file.filename)[0]}')
-        summary_path, error_message = process_file(file, format, ratio)
+        summary_path, error_message = process_file(file, format, video_id, ratio)
 
         print(f'ID-{video_id}: filename={file.filename}')
         os.rename(summary_path, file.filename)

@@ -8,7 +8,6 @@ import subprocess
 from pywhispercpp.model import Model
 import os
 
-
 class AudioFile:
     def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = os.path.basename(s)
@@ -94,7 +93,7 @@ class AudioFile:
         # Если такого файла не существует
         try:
             start_time = time()
-
+            print('Началось распознавание')
             # segments = model.transcribe(self.filename, speed_up=True)
             segments = self.model_cpp.transcribe(self.folder_name + self.filename)
             end_time = time()
@@ -120,7 +119,8 @@ class AudioFile:
             # with open(self.folder_name+ txt_file, param,  encoding="utf-8") as file:
             #     file.write(result['text'] + ' ')
         except Exception as e:
-            error_message = e
+            error_message = f'Ошибка во время распознавания голоса: {e}'
+            print(error_message)
             return error_message
 
     def extract_image(self):
