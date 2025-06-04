@@ -69,8 +69,8 @@ class AudioFile:
                 recognized_text += seg.text + ' '
                 f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
         print("Время выполнения, ", end_time - start_time)
-        with open(os.path.join(self.folder_name, txt_file), 'w', encoding='utf-8') as f:
-            print(f'В файл {os.path.join(self.folder_name, txt_file)} записан текст из аудио')
+        with open(os.path.join(self.abs_folder, txt_file), 'w', encoding='utf-8') as f:
+            print(f'В файл {os.path.join(self.abs_folder, txt_file)} записан текст из аудио')
             f.write(recognized_text)
 
     def extract_image(self):
