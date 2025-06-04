@@ -8,6 +8,8 @@ import subprocess
 from pywhispercpp.model import Model
 import os
 
+
+media_root = "/home/ubuntu/dyplom/media/videos"
 class AudioFile:
     def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = os.path.basename(s)
@@ -27,7 +29,7 @@ class AudioFile:
 
     def create_folder(self):
         # создание папки для хранения исходного файла и его производных
-        media_root = "/home/ubuntu/dyplom/media/videos"
+
         dest_folder = os.path.join(media_root, self.folder_name)
         print(f'dest_folder={dest_folder}')
 
@@ -49,6 +51,7 @@ class AudioFile:
             # except Exception as e:
             #     print('Нет глав', e)
             self.abs_filename = os.path.join(dest_folder, self.filename)
+            self.abs_folder = os.path.join(dest_folder)
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
     def recognizePywhisper_cpp(self):
@@ -60,7 +63,8 @@ class AudioFile:
         segments = self.model_cpp.transcribe(self.abs_filename)
         end_time = time()
         recognized_text = ''
-        with open(os.path.join(self.folder_name , 'timings.txt'), 'w', encoding='utf-8') as f:
+        timings_file = os.path.join(self.abs_folder,  'timings.txt')
+        with open(timings_file, 'w', encoding='utf-8') as f:
             for seg in segments:
                 recognized_text += seg.text + ' '
                 f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
