@@ -36,10 +36,10 @@ class AudioFile:
             print(f"Создание директории для файла {self.filename}")
         if not (os.path.isfile(dest_folder + self.filename)):
             # перемещение исходного файла и его аудио в созданную папку
-            os.replace(self.abs_filename, dest_folder + self.filename)
+            os.replace(self.abs_filename,  os.path.join(dest_folder, self.filename))
             os.replace(self.abs_filename[:self.abs_filename.rindex('.')] + '.mp4',
-                       dest_folder + self.filename[:self.filename.rindex('.')] + '.mp4')
-            print('replace 2')
+                       os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.mp4'))
+            print('replace success')
             # try:
             #     os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
             # except Exception as e:
