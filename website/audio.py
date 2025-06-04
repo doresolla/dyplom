@@ -34,7 +34,7 @@ class AudioFile:
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
             print(f"Создание директории для файла {self.filename}")
-        if not (os.path.isfile(dest_folder + self.filename)):
+        if not (os.path.isfile(os.path.join(dest_folder, self.filename))):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename,  os.path.join(dest_folder, self.filename))
             os.replace(self.abs_filename[:self.abs_filename.rindex('.')] + '.mp4',
