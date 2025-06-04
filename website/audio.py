@@ -12,8 +12,11 @@ class AudioFile:
     def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = os.path.basename(s)
         self.folder_name = os.path.dirname(s)
+        print(f'self.filename ={self.filename}')
+        print(f'self.folder_name={self.folder_name}')
         if abs == '':
             self.abs_filename = "/home/ubuntu/dyplom/media/videos/" + self.filename
+            print(f'self.abs_filename={self.abs_filename}')
         else:
             self.abs_filename = abs
         self.chapters = chapters
@@ -26,7 +29,7 @@ class AudioFile:
         # создание папки для хранения исходного файла и его производных
         media_root = "/home/ubuntu/dyplom/media/videos"
         dest_folder = os.path.join(media_root, self.folder_name)
-        print(f'dest_folder= {dest_folder}')
+        print(f'dest_folder={dest_folder}')
 
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
