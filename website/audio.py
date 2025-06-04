@@ -11,7 +11,7 @@ import os
 class AudioFile:
     def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = os.path.basename(s)
-        self.folder_name = os.path.dirname(s)
+        self.folder_name = self.filename[:self.filename.rindex('.')]
         print(f'self.filename ={self.filename}')
         print(f'self.folder_name={self.folder_name}')
         if abs == '':
@@ -37,9 +37,8 @@ class AudioFile:
         if not (os.path.isfile(dest_folder + self.filename)):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename, dest_folder + self.filename)
-            print('replace 1')
-            os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4',
-                       dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
+            os.replace(self.abs_filename[:self.abs_filename.rindex('.')] + '.mp4',
+                       dest_folder + self.filename[:self.filename.rindex('.')] + '.mp4')
             print('replace 2')
             # try:
             #     os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
