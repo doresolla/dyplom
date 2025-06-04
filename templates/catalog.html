@@ -1,0 +1,52 @@
+<h2>Каталог конспектов</h2>
+
+{% for summary in summaries %}
+  <div style="border: 1px solid #ccc; margin-bottom: 20px; padding: 10px;">
+    <h3>{{ summary.video.title }}</h3>
+<!--    <p><strong>Автор:</strong> {{ summary.video.author }}</p>-->
+    <p><strong>Источник:</strong> {{ summary.video.source_name }}</p>
+    {% if user and summary.video.author.user_id == user.user_id %}
+      <p><em>Вы загрузили это видео</em></p>
+    {% endif %}
+    <p><strong>Описание:</strong> {{ summary.video.description }}</p>
+    <p><strong>Формат:</strong> {{ summary.format }}</p>
+    <p><strong>Дата создания:</strong> {{ summary.created_at }}</p>
+    <p><strong>Рейтинг:</strong> {{ summary.total_rating }}</p>
+
+    <details>
+      <summary>Показать транскрипт</summary>
+      <pre>{{ summary.transcript_text }}</pre>
+    </details>
+
+    <details>
+      <summary>Показать конспект</summary>
+      <pre>{{ summary.summary_text }}</pre>
+    </details>
+
+    <a href="/media/{{ summary.file_path|cut:'media/' }}" download>📥 Скачать</a>
+
+    {% if user %}
+      {% if summary.is_favorite %}
+        <form method="post" action="{% url 'remove_favorite' summary.video.id %}">
+          {% csrf_token %}
+          <button type="submit">Удалить из избранного</button>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'add_favorite' summary.video.id %}">
+          {% csrf_token %}
+          <button type="submit">Добавить в избранное</button>
+        </form>
+      {% endif %}
+
+      <p><strong>Ваш отзыв:</strong>
+        {% if summary.my_review %}
+          {{ summary.my_review.user_rating }}/5 — {{ summary.my_review.text }}
+        {% else %}
+          <a href="{% url 'add_or_edit_review' summary.id %}">Оставить отзыв</a>
+        {% endif %}
+      </p>
+    {% endif %}
+  </div>
+{% empty %}
+  <p>Пока нет конспектов.</p>
+{% endfor %}

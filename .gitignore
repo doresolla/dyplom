@@ -1,6 +1,13 @@
 # Виртуальное окружение
 env/
 venv/
+/trpo/__pycache__/
+/website/__pycache__/
+*.pyc
+*.pyo
+*.log
+*.sqlite3
+*.tmp
 
 /trpo/.env
 media/

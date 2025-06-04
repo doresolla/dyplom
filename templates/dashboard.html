@@ -1,0 +1,58 @@
+<h2>Личный кабинет</h2>
+
+<h3>Мои видео</h3>
+<ul>
+  {% for video in user_videos %}
+    <li>
+      <strong>{{ video.title }}</strong> ({{ video.language }})<br>
+      Дата загрузки: {{ video.uploaded_at }}<br>
+      Описание: {{ video.description|default:"-" }}<br>
+      <a href="{% url 'edit_video_tags' video.id %}">Редактировать теги</a> |
+<!--      <a href="{% url 'delete_video' video.id %}">Удалить видео</a>-->
+      <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Вы уверены, что хотите удалить это видео?')">
+        {% csrf_token %}
+        <button type="submit">Удалить видео</button>
+      </form>
+    </li>
+
+  {% empty %}
+    <li>Нет загруженных видео.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+<h3>Мои конспекты</h3>
+<ul>
+  {% for summary in user_summaries %}
+    <li>
+      <strong>{{ summary.audio.video.title }}</strong> |
+      Формат: {{ summary.format }} |
+      Рейтинг: {{ summary.total_rating|floatformat:1 }}
+
+      <details>
+        <summary>📄 Исходный текст (транскрипция)</summary>
+        <pre>{{ summary.transcript_text }}</pre>
+      </details>
+
+      <details>
+        <summary>📝 Конспект</summary>
+        <pre>{{ summary.summary_text }}</pre>
+      </details>
+
+      <a href="{{ summary.file_path }}">Скачать файл</a> |
+
+      <!--      <a href="{% url 'delete_summary' summary.id %}">Удалить конспект</a>-->
+      <a href="{% url 'add_or_edit_review' summary.id %}">Оставить / редактировать отзыв</a> |
+
+      <form method="post" action="{% url 'delete_summary' summary.id %}" onsubmit="return confirm('Удалить этот конспект?')">
+        {% csrf_token %}
+        <button type="submit">Удалить конспект</button>
+      </form>
+    </li>
+
+  {% empty %}
+    <li>Нет созданных конспектов.</li>
+  {% endfor %}
+</ul>
+<a href="{% url 'delete_account' %}" style="color:red;">Удалить аккаунт</a>
