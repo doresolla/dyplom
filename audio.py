@@ -10,12 +10,11 @@ import os
 
 
 class AudioFile:
-
     def __init__(self, s, chapters, isThere,video_id, abs=''):
-        self.filename = s
-        self.folder_name = self.filename[:s.index('.')] + '\\'
+        self.filename = os.path.basename(s)
+        self.folder_name = os.path.dirname(s)
         if abs == '':
-            self.abs_filename = os.path.dirname(os.path.realpath(__file__)) + '\\' + self.filename
+            self.abs_filename = "/home/ubuntu/dyplom/media/videos/" + self.filename
         else:
             self.abs_filename = abs
         self.chapters = chapters
@@ -26,8 +25,8 @@ class AudioFile:
 
     def create_folder(self):
         # создание папки для хранения исходного файла и его производных
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        dest_folder = os.path.join(current_dir, self.folder_name)
+        media_root = "/home/ubuntu/dyplom/media/videos"
+        dest_folder = os.path.join(media_root, self.folder_name)
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
             print(f"Создание директории для файла {self.filename}")
@@ -36,14 +35,14 @@ class AudioFile:
             os.replace(self.abs_filename, dest_folder + self.filename)
             os.replace(self.abs_filename[:self.abs_filename.index('.')] + '.mp4',
                        dest_folder + self.filename[:self.filename.index('.')] + '.mp4')
-            try:
-                os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
-            except Exception as e:
-                print('Нет субтитров', e)
-            try:
-                os.replace(current_dir + '\\chapters.txt', dest_folder + 'chapters.txt')
-            except Exception as e:
-                print('Нет глав', e)
+            # try:
+            #     os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
+            # except Exception as e:
+            #     print('Нет субтитров', e)
+            # try:
+            #     os.replace(current_dir + '\\chapters.txt', dest_folder + 'chapters.txt')
+            # except Exception as e:
+            #     print('Нет глав', e)
             self.abs_filename = dest_folder + self.filename
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 

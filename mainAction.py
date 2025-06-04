@@ -111,18 +111,19 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
     if path.exists(path.dirname(url)):
         try:
             filename = os.path.basename(url)
-            print(f'ID-{video_id}: Название видео:{filename}')
+            print(f'ID-{video_id}: Название видео:{filename}, {url}')
             chapters = []
             dict = {}
-            if (os.path.isfile(filename[:filename.rindex('.')] + '\\chapters.txt')):
-                with open(filename[:filename.rindex('.')] + '\\chapters.txt', 'r', encoding='utf-8') as f:
+            chapters_path = os.path.join(os.path.dirname(url), filename[:filename.rindex('.')] + '_chapters.txt')
+            if (os.path.isfile(chapters_path)):
+                with open(chapters_path, 'r', encoding='utf-8') as f:
                     s = f.readline()
                     dict['start_time'], dict['title'], dict['end_time'] = s.split('\t')
                     chapters.append(dict)
                 print(f'ID-{video_id}: Скачаны chapters')
             audio.convert_video_to_audio_ffmpeg(url)
             print(f'ID-{video_id}: Видео {filename} конвертировано в аудио')
-            file = audio.AudioFile(filename, chapters, False, url)
+            file = audio.AudioFile(url, chapters, False, url)
         except Exception as e:
             error_message = f"ID-{video_id}:Ошибка: убедитесь, что файл доступен {e}"
             print(error_message)
