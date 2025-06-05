@@ -33,7 +33,7 @@ class AudioFile:
 
         dest_folder = os.path.join(media_root, self.folder_name)
         print(f'dest_folder={dest_folder}')
-
+        self.abs_folder = dest_folder
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
             print(f"Создание директории для файла {self.filename}")
@@ -54,10 +54,12 @@ class AudioFile:
             self.abs_filename = os.path.join(dest_folder, self.filename)
             print(f'self.abs_filename = {self.abs_filename}')
             self.abs_folder = dest_folder
+            print(f'self.abs_folder = {self.abs_folder }')
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
+
     def recognizePywhisper_cpp(self):
-        txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
+        txt_file = os.path.join(self.abs_folder, self.filename[:self.filename.rindex('.')] + '.txt')
         print(f'txt_file = {txt_file}')
         # Если такого файла не существует
         start_time = time()
