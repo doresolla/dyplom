@@ -52,6 +52,7 @@ class AudioFile:
             # except Exception as e:
             #     print('Нет глав', e)
             self.abs_filename = os.path.join(dest_folder, self.filename)
+            print(f'self.abs_filename = {self.abs_filename}')
             self.abs_folder = dest_folder
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 

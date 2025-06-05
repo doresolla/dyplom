@@ -32,6 +32,10 @@ class Text:
         basename = os.path.basename(abs_name)
         self.name = basename[:basename.rindex('.')]
         self.abs_folder = os.path.dirname(abs_name)
+        print('TEXT.PY')
+        print(f'self.name = {self.name}')
+        print(f'basename = {basename}')
+        print(f'self.abs_folder = {self.abs_folder}')
         self.video_id = video_id
         if chapters is None:
             chapters = []
@@ -57,6 +61,8 @@ class Text:
             self.chapters_text = self.find_chapter_for_text(timing_dict)
 
         recognize_path = os.path.join(self.abs_folder, f'{self.name}.txt')
+        print(f'recognize_path = {recognize_path}')
+
         recognized_text = ''
         with open(recognize_path, encoding='utf-8') as file_text:
             chunk = file_text.read(10000)
