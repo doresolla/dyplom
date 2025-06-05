@@ -29,7 +29,8 @@ stopWords = set(stopwords.words("russian"))
 
 class Text:
     def __init__(self, abs_name, video_id, chapters=None, SEN_PERCENT=0.5):
-        self.name = os.path.basename(abs_name)
+        basename = os.path.basename(abs_name)
+        self.name = basename[:basename.rindex('.')]
         self.abs_folder = os.path.dirname(abs_name)
         self.video_id = video_id
         if chapters is None:
@@ -129,7 +130,8 @@ class Text:
             print('paragraphs', len(paragraphs))
             self.export_to_doc('Исходный текст', paragraphs)
             # print('\n'.join(paragraphs))
-            with open(self.name + "\\paragraphs.txt", 'w', encoding="utf-8") as f:
+            paragraphs_path = os.path.join(self.abs_folder, "paragraphs.txt")
+            with open(paragraphs_path, 'w', encoding="utf-8") as f:
                 f.write(text)
             return paragraphs, sent_para
         except Exception as e:
@@ -214,7 +216,7 @@ class Text:
                     if sentence in sentenceValue:
                         if (sentenceValue[sentence] > ((1 + self.ratio) * average)) or (self.contains_word(sentence)):
                             f.write(sentence.strip() + ". ")
-            return self.name + "\\" + "sent_summary.txt"
+            return os.path.join(self.abs_folder, "sent_summary.txt")
         except Exception as e:
             print(e)
             print(repr(e))
@@ -257,7 +259,8 @@ class Text:
         text_rank_sum = text_rank.TextRankSummarizer()
         luhn_sum = luhn.LuhnSummarizer()
         text = ''
-        parser = plaintext.PlaintextParser.from_file(self.name + "\\" + self.name + ".txt", Tokenizer('russian'))
+        txt_file = os.path.join(self.abs_folder,self.name + ".txt" )
+        parser = plaintext.PlaintextParser.from_file(txt_file, Tokenizer('russian'))
 
         for sen in lsa_sum(parser.document, self.sentences_count):
             text += str(sen) + ' '
@@ -281,7 +284,7 @@ class Text:
             text += str(sen) + ' '
         # self.data['luhn'] = [text]
         self.sent_para_summary("luhn", text)
-        names = [f'{self.name}\\{x}.{format}' for x in ['lsa','lex_rank','text_rank_sumy','luhn']]
+        names = [f'{self.abs_folder}/{x}.{format}' for x in ['lsa','lex_rank','text_rank_sumy','luhn']]
         return names
 
     def contains_word(self, sentence):
@@ -295,9 +298,9 @@ class Text:
         all_scores = [[] for _ in range(len(sums))]
         for i in range(len(sums)):
             for j in range(len(sums)):
-                with open(self.name + '\\' + sums[i] + '.txt', 'r', encoding='utf-8') as t:
+                with open(os.path.join(self.abs_folder, sums[i] + '.txt'), 'r', encoding='utf-8') as t:
                     target = t.read()
-                with open(self.name + '\\' + sums[j] + '.txt', 'r', encoding='utf-8') as p:
+                with open(os.path.join(self.abs_folder, sums[j] + '.txt'), 'r', encoding='utf-8') as p:
                     prediction = p.read()
 
                 scores = scorer.score(target, prediction)
