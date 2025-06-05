@@ -184,7 +184,7 @@ def process_file(file, format, video_id, ratio=0.5):
         else:
             print(f"ID-{video_id}:Распознавание прошло успешно")
     print(f"ID-{video_id}: Выполняется обработка текста")
-    text_to_sum = Text(name, file.chapters,SEN_PERCENT=ratio)
+    text_to_sum = Text(file.abs_filename, file.chapters,SEN_PERCENT=ratio)
     try:
         text_to_sum.sent_summary()
         filename_pathes = text_to_sum.sumy_sum(format)

@@ -28,9 +28,9 @@ stopWords = set(stopwords.words("russian"))
 
 
 class Text:
-    def __init__(self, name, video_id, chapters=None, SEN_PERCENT=0.5):
-
-        self.name = name
+    def __init__(self, abs_name, video_id, chapters=None, SEN_PERCENT=0.5):
+        self.name = os.path.basename(abs_name)
+        self.abs_folder = os.path.dirname(abs_name)
         self.video_id = video_id
         if chapters is None:
             chapters = []
@@ -38,7 +38,8 @@ class Text:
         else:
             self.chapters = chapters
             timing_dict = {}
-            with open(os.path.join(self.name,'timings.txt'), 'r', encoding='utf-8') as file:
+            timings_path = os.path.join(self.abs_folder, 'timings.txt')
+            with open(timings_path, 'r', encoding='utf-8') as file:
                 while True:
                     # Читаем начальное время
                     start_time = file.readline().strip()
@@ -54,9 +55,9 @@ class Text:
                     file.readline()
             self.chapters_text = self.find_chapter_for_text(timing_dict)
 
-
+        recognize_path = os.path.join(self.abs_folder, f'{self.name}.txt')
         recognized_text = ''
-        with open(os.path.join(self.name, self.name + '.txt'), encoding='utf-8') as file_text:
+        with open(recognize_path, encoding='utf-8') as file_text:
             chunk = file_text.read(10000)
             while chunk:
                 recognized_text = recognized_text + chunk
@@ -133,7 +134,7 @@ class Text:
             return paragraphs, sent_para
         except Exception as e:
             print(e)
-            report_error(self.video_id, e)
+
 
 
     def morphy_lemmatize(self, text):
@@ -153,7 +154,8 @@ class Text:
             return
         parag = []
         p = ''
-        with open(self.name + "\\" + filename + '.txt', 'w', encoding='utf-8') as f:
+        filename_path = os.path.join(self.abs_folder, filename)
+        with open(filename_path, 'w', encoding='utf-8') as f:
             for para in self.paragraphs:
                 sen_para = sent_tokenize(para, language='russian')
                 for sentence in sen_para:
@@ -201,13 +203,13 @@ class Text:
         except Exception as e:
             print(e)
             print(repr(e))
-            report_error(self.video_id, e)
 
         average = int(allFreq / len(sentenceValue))
 
         # Storing sentences into our summary.
         try:
-            with open(self.name + "\\" + "sent_summary.txt", 'w', encoding='utf-8') as f:
+            filename_path = os.path.join(self.abs_folder, "sent_summary.txt")
+            with open(filename_path, 'w', encoding='utf-8') as f:
                 for sentence in self.sentences:
                     if sentence in sentenceValue:
                         if (sentenceValue[sentence] > ((1 + self.ratio) * average)) or (self.contains_word(sentence)):
@@ -217,7 +219,6 @@ class Text:
             print(e)
             print(repr(e))
             print(type(e).__name__)
-            report_error(self.video_id, e)
 
     # def text_rank(self):
     #     sentence_paragraph_map = []
@@ -304,7 +305,8 @@ class Text:
                         ((scores['rougeL'][0], scores['rougeL'][1], scores['rougeL'][2]))]
                 all_scores[i].append(elem)
         df = pd.DataFrame(all_scores)
-        df.to_excel(excel_writer=self.name + '\\scores.xlsx')
+        excel_path = os.path.join(self.abs_folder, '/scores.xlsx')
+        df.to_excel(excel_writer=excel_path)
         self.scores = all_scores
         print(all_scores)
 
@@ -362,7 +364,7 @@ class Text:
                 font = para.style.font
                 font.name = 'Times New Roman'  # Устанавливаем шрифт
                 font.size = Pt(12)
-        doc.save(self.name + '\\' + name + '.docx')
+        doc.save(os.path.join(self.abs_folder, f'{name}.docx'))
 
     def find_chapter_for_text(self, timing_dict):
         chapters_sents = {}
@@ -381,14 +383,15 @@ class Text:
 
 
 def read_subs(folder):
-    name = folder + '\\' + 'sub.srt.ru.vtt'
+
+    name = os.path.join(folder,'sub.srt.ru.vtt')
     recognized_text = ''
     with open(name) as f:
         chunk = f.read(10000)
         while chunk:
             recognized_text = recognized_text + chunk
             chunk = f.read(10000)
-    new_file = folder + '\\' + 'new_sub.srt.ru.vtt'
+    new_file = os.path.join(folder, 'new_sub.srt.ru.vtt')
     new_text = sub(r'(\d{2}:\d{2}:\d{2}\.\d{3})|(<c>)|(</c>)|(align:start position:0%)|(-->)|(\s{2})', '',
                    recognized_text)
     new_text = sub(r'(\s{3})|(<>)', '', new_text)
