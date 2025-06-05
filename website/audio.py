@@ -17,7 +17,7 @@ class AudioFile:
         print(f'self.filename ={self.filename}')
         print(f'self.folder_name={self.folder_name}')
         if abs == '':
-            self.abs_filename = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}" + self.filename
+            self.abs_filename = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}/" + self.filename
             print(f'self.abs_filename={self.abs_filename}')
         else:
             self.abs_filename = abs
