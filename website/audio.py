@@ -23,6 +23,7 @@ class AudioFile:
             self.abs_filename = abs
         self.chapters = chapters
         self.video_id = video_id
+        self.abs_folder = ''
         self.model_cpp = Model('small', n_threads=6, language='ru')
         if not isThere:
             self.create_folder()
@@ -51,11 +52,12 @@ class AudioFile:
             # except Exception as e:
             #     print('Нет глав', e)
             self.abs_filename = os.path.join(dest_folder, self.filename)
-            self.abs_folder = os.path.join(dest_folder)
+            self.abs_folder = dest_folder
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
     def recognizePywhisper_cpp(self):
         txt_file = self.filename[:self.filename.rindex('.')] + '.txt'
+        print(f'txt_file = {txt_file}')
         # Если такого файла не существует
         start_time = time()
         print('Началось распознавание')
@@ -64,6 +66,7 @@ class AudioFile:
         end_time = time()
         recognized_text = ''
         timings_file = os.path.join(self.abs_folder,  'timings.txt')
+        print(f'timings_file = {timings_file}')
         with open(timings_file, 'w', encoding='utf-8') as f:
             for seg in segments:
                 recognized_text += seg.text + ' '
