@@ -32,7 +32,7 @@ class AudioFile:
         self.chapters = chapters
         self.video_id = video_id
         self.abs_folder = ''
-        self.model_cpp = Model('small', n_threads=6, language='ru')
+        self.model_cpp = Model('small', n_threads=2, language='ru', translate=False)
         if not isThere:
             self.create_folder()
 
