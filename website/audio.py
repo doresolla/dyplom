@@ -44,21 +44,20 @@ class AudioFile:
             print(f"Создание директории для файла {self.filename}")
         if not (os.path.isfile(os.path.join(dest_folder, self.filename))):
             # перемещение исходного файла и его аудио в созданную папку
-            os.replace(self.abs_filename,  os.path.join(dest_folder, self.filename))
-            print(f'replace {self.abs_filename} -> {os.path.join(dest_folder, self.filename)}')
-            wav_before = self.abs_filename[:self.abs_filename.rindex('.')] + '.wav'
-            wav_after = os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.wav')
-            os.replace(wav_before,wav_after)
-            print(f'replace {wav_before} -> {wav_after}')
+            before = self.abs_filename
+            after = os.path.join(dest_folder, self.filename)
+            os.replace(before,  after)
+            print(f'replace {before} -> {after}')
+            before = self.abs_filename[:self.abs_filename.rindex('.')] + '.wav'
+            after = os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.wav')
+            os.replace(before,after)
+            print(f'replace {before} -> {after}')
+            before = os.path.join(media_root, f'{self.filename[:self.filename.rindex('.')]}_thumb.jpg')
+            after = os.path.join(dest_folder, f'{self.filename[:self.filename.rindex('.')]}_thumb.jpg')
 
-            # try:
-            #     os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
-            # except Exception as e:
-            #     print('Нет субтитров', e)
-            # try:
-            #     os.replace(current_dir + '\\chapters.txt', dest_folder + 'chapters.txt')
-            # except Exception as e:
-            #     print('Нет глав', e)
+            os.replace(before,after)
+            print(f'replace {before} -> {after}')
+
             self.abs_filename = os.path.join(dest_folder, self.filename)
             print(f'self.abs_filename = {self.abs_filename}')
             self.abs_folder = dest_folder
