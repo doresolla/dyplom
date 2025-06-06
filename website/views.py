@@ -120,7 +120,7 @@ def home(request):
                     })
                 else:
                 # Создаём сущности Audio и Summary на основе результата
-                    audio_path = video_path.replace('.mp4', '.mp3')
+                    audio_path = video_path.replace('.mp4', '.wav')
                     transcript_path = video_path.replace('.mp4', '.txt')  # результат распознавания
 
                     audio = Audio.objects.create(

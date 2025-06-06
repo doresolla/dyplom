@@ -40,9 +40,12 @@ class AudioFile:
         if not (os.path.isfile(os.path.join(dest_folder, self.filename))):
             # перемещение исходного файла и его аудио в созданную папку
             os.replace(self.abs_filename,  os.path.join(dest_folder, self.filename))
-            os.replace(self.abs_filename[:self.abs_filename.rindex('.')] + '.wav',
-                       os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.wav'))
-            print('replace success')
+            print(f'replace {self.abs_filename} -> {os.path.join(dest_folder, self.filename)}')
+            wav_before = self.abs_filename[:self.abs_filename.rindex('.')] + '.wav'
+            wav_after = os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.wav')
+            os.replace(wav_before,wav_after)
+            print(f'replace {wav_before} -> {wav_after}')
+
             # try:
             #     os.replace(current_dir + '\\tmp\\sub.srt.ru.vtt', dest_folder + 'sub.srt.ru.vtt')
             # except Exception as e:

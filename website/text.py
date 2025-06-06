@@ -162,7 +162,7 @@ class Text:
             return
         parag = []
         p = ''
-        filename_path = os.path.join(self.abs_folder, filename)
+        filename_path = os.path.join(self.abs_folder, filename+'.txt')
         with open(filename_path, 'w', encoding='utf-8') as f:
             for para in self.paragraphs:
                 sen_para = sent_tokenize(para, language='russian')
@@ -258,7 +258,7 @@ class Text:
     #     # self.data['text_rank'] = [summary]
     #     return summary
 
-    def sumy_sum(self, format='docx'):
+    def sumy_sum(self, format='txt'):
         # , {k: v for k, v in freqTable.items() if v != 1}
         lsa_sum = lsa.LsaSummarizer()
         lex_sum = lex_rank.LexRankSummarizer()
