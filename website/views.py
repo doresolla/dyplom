@@ -6,9 +6,6 @@ from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
-from celery.result import AsyncResult
-from dyplom.celery import app
 
 from .mainAction import generate_summary
 
