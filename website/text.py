@@ -314,7 +314,7 @@ class Text:
                         ((scores['rougeL'][0], scores['rougeL'][1], scores['rougeL'][2]))]
                 all_scores[i].append(elem)
         df = pd.DataFrame(all_scores)
-        excel_path = os.path.join(self.abs_folder, '/scores.xlsx')
+        excel_path = os.path.join(self.abs_folder, 'scores.xlsx')
         df.to_excel(excel_writer=excel_path)
         self.scores = all_scores
         print(all_scores)
