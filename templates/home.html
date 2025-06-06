@@ -85,7 +85,7 @@ function closeModal() {
   document.getElementById("customModal").style.display = "none";
 }
 
-{% if success_message %}
+{% if message_to_user %}
 document.addEventListener("DOMContentLoaded", function() {
   const modal = document.getElementById("customModal");
   modal.style.display = "flex";
