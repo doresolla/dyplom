@@ -112,7 +112,7 @@ def home(request):
                     source_name=source_name
                 )
                 # Генерация конспекта через существующую функцию
-                summary_path, error_message = generate_summary(url=video_path, video_id=str(video.id), format='docx', ratio=0.5)
+                # summary_path, error_message = generate_summary(url=video_path, video_id=str(video.id), format='docx', ratio=0.5)
 
                 if error_message:
                     return render(request, 'home.html', {
