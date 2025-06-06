@@ -1,4 +1,4 @@
-from trpo.celery import shared_task
+from celery import shared_task
 from .mainAction import generate_summary
 from .models import Audio, Summary
 import os
