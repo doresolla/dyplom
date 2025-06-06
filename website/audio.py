@@ -20,11 +20,13 @@ class AudioFile:
             path_to_file = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}/" + self.filename
             if os.path.isfile(path_to_file):
                 self.abs_filename = path_to_file
+                print(f'11111self.abs_filename = {self.abs_filename}')
             else:
                 path_to_file = f"/home/ubuntu/dyplom/media/videos/" + self.filename
                 if os.path.isfile(path_to_file):
                     self.abs_filename = path_to_file
-            print(f'self.abs_filename={self.abs_filename}')
+                    print(f'self.abs_filename = {self.abs_filename}')
+            print(f'22222222self.abs_filename={self.abs_filename}')
         else:
             self.abs_filename = abs
         self.chapters = chapters
