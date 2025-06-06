@@ -6,11 +6,15 @@ from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse
+from celery.result import AsyncResult
+from dyplom.celery import app
 
 from .mainAction import generate_summary
 
 from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm
 from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership
+from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
 
@@ -112,6 +116,7 @@ def home(request):
                 )
                 # Генерация конспекта через существующую функцию
                 summary_path, error_message = generate_summary(url=video_path, video_id=str(video.id), format='docx', ratio=0.5)
+
                 if error_message:
                     return render(request, 'home.html', {
                         'form': VideoUploadForm(),  # создать новую форму
@@ -125,17 +130,12 @@ def home(request):
 
                     audio = Audio.objects.create(
                         video=video,
-                        audio_path=audio_path,
-                        transcription_path=transcript_path,
+                        audio_path='',
+                        transcription_path='',
                     )
+                    run_summary_task.delay(audio.id)
 
-                    Summary.objects.create(
-                        audio=audio,
-                        file_path=summary_path,
-                        format='docx'
-                    )
-
-                    success_message = f"Видео «{title}» обработано успешно. Длительность: {duration} сек."
+                    success_message =  f"Видео «{title}» загружено. Идёт обработка... Вы сможете получить конспект позже."
                     print(success_message)
                     return render(request, 'home.html', {
                         'form': VideoUploadForm(),
@@ -150,6 +150,18 @@ def home(request):
         'user_name': user.username if user else None,
         'message_to_user': success_message if success_message else error_message
     })
+#
+# def launch_summary(video_path, video_id):
+#     task = run_summary_task.delay(video_path, video_id)
+#     return HttpResponse(f"Обработка запущена. ID задачи: {task.id}")
+#
+# def check_task_result(request, task_id):
+#     res = AsyncResult(task_id, app=app)
+#     if res.ready():
+#         return HttpResponse(f"Готово! Summary path: {res.result}")
+#     else:
+#         return HttpResponse(f"Задача ещё выполняется.")
+
 def register_user(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)

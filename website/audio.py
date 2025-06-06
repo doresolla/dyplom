@@ -70,23 +70,27 @@ class AudioFile:
     def recognizePywhisper_cpp(self):
         txt_file = os.path.join(self.abs_folder, self.filename[:self.filename.rindex('.')] + '.txt')
         print(f'txt_file = {txt_file}')
-        # Если такого файла не существует
-        start_time = time()
-        print('Началось распознавание')
-        # segments = model.transcribe(self.filename, speed_up=True)
-        segments = self.model_cpp.transcribe(self.abs_filename)
-        end_time = time()
-        recognized_text = ''
-        timings_file = os.path.join(self.abs_folder,  'timings.txt')
-        print(f'timings_file = {timings_file}')
-        with open(timings_file, 'w', encoding='utf-8') as f:
-            for seg in segments:
-                recognized_text += seg.text + ' '
-                f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
-        print("Время выполнения, ", end_time - start_time)
-        with open(os.path.join(self.abs_folder, txt_file), 'w', encoding='utf-8') as f:
-            print(f'В файл {os.path.join(self.abs_folder, txt_file)} записан текст из аудио')
-            f.write(recognized_text)
+        if (not os.path.isfile(txt_file)):
+            # Если такого файла не существует
+            start_time = time()
+            print('Началось распознавание')
+            # segments = model.transcribe(self.filename, speed_up=True)
+            segments = self.model_cpp.transcribe(self.abs_filename)
+            end_time = time()
+            recognized_text = ''
+            timings_file = os.path.join(self.abs_folder,  'timings.txt')
+            print(f'timings_file = {timings_file}')
+            with open(timings_file, 'w', encoding='utf-8') as f:
+                for seg in segments:
+                    recognized_text += seg.text + ' '
+                    f.write(f'{seg.t0}\n{seg.text}\n{seg.t1}\n\n')
+            print("Время выполнения, ", end_time - start_time)
+            with open(os.path.join(self.abs_folder, txt_file), 'w', encoding='utf-8') as f:
+                print(f'В файл {os.path.join(self.abs_folder, txt_file)} записан текст из аудио')
+                f.write(recognized_text)
+        else:
+            print(f'Файл {txt_file} уже есть')
+
 
     def extract_image(self):
         width = 1920

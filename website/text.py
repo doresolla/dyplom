@@ -317,7 +317,7 @@ class Text:
         excel_path = os.path.join(self.abs_folder, 'scores.xlsx')
         df.to_excel(excel_writer=excel_path)
         self.scores = all_scores
-        print(all_scores)
+        # print(all_scores)
 
     def add_data_export(self, dataset):
         print()

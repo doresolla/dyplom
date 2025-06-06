@@ -150,26 +150,6 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
 
     return summary_path, error_message
 def process_file(file, format, video_id, ratio=0.5):
-    # start = file.duration // 10 // 60
-    # current_dir = path.dirname(path.realpath(__file__))
-    # dest_folder = path.join(current_dir, file.folder_name)
-    # cut = str(dest_folder + 'cut.wav')
-    # audio.split_video(file.folder_name + file.filename, start, start, cut)
-    # model = whisper.load_model("small", in_memory=True)
-    # cut = whisper.load_audio(cut)
-    # cut = whisper.pad_or_trim(cut)
-    # mel = whisper.log_mel_spectrogram(cut).to(model.device)
-    # _, probs = model.detect_language(mel)
-    #
-    # output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
-    # print("Вероятности появления различных языков:", output)
-    # lang = output[0]
-    # print("Язык - ", lang)
-    # если есть неопределенность в языке
-    # if output[1][1] > 0.2 or lang[0] != 'ru':
-    #     print(output[1])
-    #     print("Поддержка других языков недоступна")
-    #     return
     name = os.path.splitext(file.filename)[0]
     txt_filename = name + '.txt'
     txt_path = os.path.join(file.folder_name, txt_filename)
