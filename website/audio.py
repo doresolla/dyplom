@@ -17,7 +17,13 @@ class AudioFile:
         print(f'self.filename ={self.filename}')
         print(f'self.folder_name={self.folder_name}')
         if abs == '':
-            self.abs_filename = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}/" + self.filename
+            path_to_file = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}/" + self.filename
+            if os.path.isfile(path_to_file):
+                self.abs_filename = path_to_file
+            else:
+                path_to_file = f"/home/ubuntu/dyplom/media/videos/" + self.filename
+                if os.path.isfile(path_to_file):
+                    self.abs_filename = path_to_file
             print(f'self.abs_filename={self.abs_filename}')
         else:
             self.abs_filename = abs
@@ -30,7 +36,6 @@ class AudioFile:
 
     def create_folder(self):
         # создание папки для хранения исходного файла и его производных
-
         dest_folder = os.path.join(media_root, self.folder_name)
         print(f'dest_folder={dest_folder}')
         self.abs_folder = dest_folder
