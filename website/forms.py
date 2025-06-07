@@ -74,7 +74,7 @@ class SummaryReviewForm(forms.ModelForm):
 class SummaryForm(forms.ModelForm):
     class Meta:
         model = Summary
-        fields = ['format']
+        fields = ['format', 'algorithm']
 
 class TagForm(forms.ModelForm):
     class Meta:

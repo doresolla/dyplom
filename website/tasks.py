@@ -1,14 +1,15 @@
 from celery import shared_task
 from .mainAction import generate_summary
-from .models import Audio, Summary
+from .models import Audio, Summary, User
 import os
-
+from django.core.mail import send_mail
 @shared_task(bind=True)
 def run_summary_task(self, audio_id):
     audio = Audio.objects.get(id=audio_id)
-    video_id = audio.video.id
-    video_path = audio.video.video_path
-
+    video = audio.video
+    video_id = video.id
+    video_path = video_path
+    user = User.objects.filter(username=video.author).first()
     print(f"[TASK] Start generating summary for Video ID {video_id}")
 
     summary_path, error_message = generate_summary(video_path, video_id, format='docx', ratio=0.5)
@@ -32,7 +33,14 @@ def run_summary_task(self, audio_id):
         )
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
-
+        if user and user.email:
+            send_mail(
+                subject="Конспект готов",
+                message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
+                from_email=None,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
         return {
             'status': 'success',
             'summary_path': os.path.abspath(summary_path)

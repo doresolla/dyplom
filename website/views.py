@@ -111,34 +111,22 @@ def home(request):
                     status=True,
                     source_name=source_name
                 )
-                # Генерация конспекта через существующую функцию
-                # summary_path, error_message = generate_summary(url=video_path, video_id=str(video.id), format='docx', ratio=0.5)
 
-                if error_message:
-                    return render(request, 'home.html', {
-                        'form': VideoUploadForm(),  # создать новую форму
-                        'user_name': user.username,
-                        'message_to_user': error_message
-                    })
-                else:
                 # Создаём сущности Audio и Summary на основе результата
-                    audio_path = video_path.replace('.mp4', '.wav')
-                    transcript_path = video_path.replace('.mp4', '.txt')  # результат распознавания
+                audio = Audio.objects.create(
+                    video=video,
+                    audio_path='',
+                    transcription_path='',
+                )
+                run_summary_task.delay(audio.id)
 
-                    audio = Audio.objects.create(
-                        video=video,
-                        audio_path='',
-                        transcription_path='',
-                    )
-                    run_summary_task.delay(audio.id)
-
-                    success_message =  f"Видео «{title}» загружено. Идёт обработка... Вы сможете получить конспект позже."
-                    print(success_message)
-                    return render(request, 'home.html', {
-                        'form': VideoUploadForm(),
-                        'message_to_user': success_message,
-                        'user_name': user.username
-                    })
+                success_message =  f"Видео «{title}» загружено. Идёт обработка... Вы сможете получить конспект позже."
+                print(success_message)
+                return render(request, 'home.html', {
+                    'form': VideoUploadForm(),
+                    'message_to_user': success_message,
+                    'user_name': user.username
+                })
     else:
         form = VideoUploadForm()
 
