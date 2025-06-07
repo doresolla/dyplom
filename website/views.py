@@ -17,7 +17,8 @@ from website.video import download, get_video_duration, extract_thumbnail, PROXI
 
 def home(request):
     user_id = request.session.get('user_ID')
-    user = User.objects.filter(pk=user_id).first()
+    user = User.objects.filter(pk=user_id).first() if user_id else None
+    user_name = user.username if user else None
     success_message = None
     error_message = None
     if request.method == 'POST':
@@ -140,7 +141,7 @@ def home(request):
     return render(request, 'home.html', {
         'form': video_form,
         'algo_format_form': algo_format_form,
-        'user_name': user.username
+        'user_name': user_name
     })
 #
 # def launch_summary(video_path, video_id):
