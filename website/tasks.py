@@ -8,7 +8,7 @@ def run_summary_task(self, audio_id):
     audio = Audio.objects.get(id=audio_id)
     video = audio.video
     video_id = video.id
-    video_path = video_path
+    video_path = video.video_path
     user = User.objects.filter(username=video.author).first()
     print(f"[TASK] Start generating summary for Video ID {video_id}")
 
