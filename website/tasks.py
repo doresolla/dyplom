@@ -3,6 +3,8 @@ from .mainAction import generate_summary
 from .models import Audio, Summary, Format, Algo, User
 import os
 from django.core.mail import send_mail
+from django.conf import settings
+
 @shared_task(bind=True)
 def run_summary_task(self, audio_id, algo, format, ratio):
     audio = Audio.objects.get(id=audio_id)
@@ -54,7 +56,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 send_mail(
                     subject="Конспект готов",
                     message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
-                    from_email=None,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
