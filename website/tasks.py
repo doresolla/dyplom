@@ -9,7 +9,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     video = audio.video
     algo_obj = algo
     format_obj = format
-    user = User.objects.filter(user_id=video.author).first()
+    user = video.author
     print('---------------------------------------------------')
     print(f'user = {user}')
     print(f'user.id = {user.user_id}')
