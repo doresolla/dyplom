@@ -16,7 +16,7 @@ from .tasks import run_summary_task
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
 
 def home(request):
-    user_id = request.session.get('user_id')
+    user_id = request.session.get('user_ID')
     user = User.objects.filter(pk=user_id).first()
     success_message = None
     error_message = None
