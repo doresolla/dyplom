@@ -52,7 +52,6 @@ def run_summary_task(self, audio_id, algo, format, ratio):
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
         if user and user.email:
             try:
-                print(f'Отправлено сообщение на {user.email}: {video.title}')
                 send_mail(
                     subject="Конспект готов",
                     message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
@@ -60,6 +59,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                     recipient_list=[user.email],
                     fail_silently=False,
                 )
+                print(f'Отправлено сообщение на {user.email}: {video.title}')
                 return {
                     'status': 'success',
                     'summary_path': os.path.abspath(summary_path)
