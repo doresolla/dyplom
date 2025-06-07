@@ -4,7 +4,7 @@ from django.contrib.auth.hashers import make_password
 
 class User(models.Model):
     user_id = models.AutoField(primary_key=True, db_column='user_ID')
-    email = models.CharField(max_length=256, unique=True)
+    email = models.EmailField(max_length=254, unique=True)
     username = models.CharField(max_length=150, unique=True)
     phone_number = models.CharField(max_length=256)
     password = models.CharField(max_length=256)  # Храним хеш
