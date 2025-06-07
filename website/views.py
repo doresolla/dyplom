@@ -133,15 +133,15 @@ def home(request):
                     'message_to_user': success_message,
                     'user_name': user.username
                 })
-        else:
-            video_form = VideoUploadForm()
-            algo_format_form = SummaryAlgoFormatForm()
+    else:
+        video_form = VideoUploadForm()
+        algo_format_form = SummaryAlgoFormatForm()
 
-        return render(request, 'home.html', {
-            'form': video_form,
-            'algo_format_form': algo_format_form,
-            'user_name': user.username
-        })
+    return render(request, 'home.html', {
+        'form': video_form,
+        'algo_format_form': algo_format_form,
+        'user_name': user.username
+    })
 #
 # def launch_summary(video_path, video_id):
 #     task = run_summary_task.delay(video_path, video_id)
