@@ -23,7 +23,7 @@ class User(models.Model):
 
 class Video(models.Model):
     status = models.BooleanField(default=False)
-    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='videos')
+    author = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='videos')
     source_name = models.CharField(max_length=255, blank=True)  # канал или имя источника
     title = models.CharField(max_length=255)
     url = models.URLField(blank=True)
@@ -38,7 +38,7 @@ class Video(models.Model):
 
 
 class VideoOwnership(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True)
     video = models.ForeignKey(Video, on_delete=models.CASCADE)
 
     class Meta:
@@ -76,7 +76,7 @@ class Algo(models.Model):
 
 class Summary(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name='summaries')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='summaries')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='summaries')
     file_path = models.CharField(max_length=500)  # путь к файлу с конспектом
     created_at = models.DateField(auto_now_add=True)
     total_rating = models.FloatField(default=0.0)
@@ -93,7 +93,7 @@ class Summary(models.Model):
 
 class SummaryReview(models.Model):
     summary = models.ForeignKey(Summary, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='summary_reviews')
+    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='summary_reviews')
     created_at = models.DateField(auto_now_add=True)
     text = models.TextField()
     user_rating = models.PositiveSmallIntegerField()
