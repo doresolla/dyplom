@@ -104,7 +104,7 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: Работа завершена")
             self.print_signal.result.emit(f"Конспекты для видео \"{text_to_sum.name}\" сохранены. Пожалуйста, проверьте директорию файла")
 
-def generate_summary(url, video_id, format='docx', ratio=0.5):
+def generate_summary(url, video_id, algo, format='docx', ratio=0.5):
     summary_path = ''
     file = ''
     error_message = None
@@ -129,27 +129,16 @@ def generate_summary(url, video_id, format='docx', ratio=0.5):
             error_message = f"ID-{video_id}:Ошибка: убедитесь, что файл доступен {e}"
             print(error_message)
             return None, error_message
-    # else:
-    #     print("Статус: Скачивание видео")
-    #     isThere = False
-    #     try:
-    #         filename, duration, chapters = audio.download(url)
-    #         print(chapters)
-    #         print("Статус: Скачивание видео завершено")
-    #         file = audio.AudioFile(filename, duration, chapters, isThere, video_id=video_id)
-    #     except Exception as e:
-    #         print(e)
-    #         audio.report_error(video_id, e)
 
     if isinstance(file, audio.AudioFile):
         print(f'ID-{video_id}:{os.path.splitext(file.filename)[0]}')
-        summary_path, error_message = process_file(file, format, video_id, ratio)
+        summary_path, error_message = process_file(file, format, video_id, algo, ratio=ratio)
 
         print(f'ID-{video_id}: filename={file.filename}')
         os.rename(summary_path, file.filename)
 
     return summary_path, error_message
-def process_file(file, format, video_id, ratio=0.5):
+def process_file(file, format, video_id, algo, ratio=0.5):
     name = os.path.splitext(file.filename)[0]
     txt_filename = name + '.txt'
     txt_path = os.path.join(file.folder_name, txt_filename)
@@ -167,12 +156,11 @@ def process_file(file, format, video_id, ratio=0.5):
     text_to_sum = Text(file.abs_filename,video_id, file.chapters,SEN_PERCENT=ratio)
     try:
         text_to_sum.sent_summary()
-        filename_pathes = text_to_sum.sumy_sum(format)
+        filename_path = text_to_sum.sumy_sum(algo=algo, format=format)
         text_to_sum.compare_sum()
         print(f"ID-{video_id}: Работа завершена")
         print(f"ID-{video_id}: Конспекты для видео \"{text_to_sum.name}\" сохранены")
-        ### TODO : выбор алгоритма суммаризации
-        return filename_pathes[0], None
+        return filename_path, None
     except Exception as e:
         error_message = f'ID-{video_id}: Ошибка во время обработки текста {e}'
         print(error_message)

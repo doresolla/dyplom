@@ -9,7 +9,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 
 from .mainAction import generate_summary
 
-from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm
+from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
 from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership
 from .tasks import run_summary_task
 
@@ -22,11 +22,16 @@ def home(request):
     error_message = None
     if request.method == 'POST':
         form = VideoUploadForm(request.POST, request.FILES)
-        if form.is_valid() and user:
+        algo_form = SummaryAlgoFormatForm(request.POST)
+        if form.is_valid() and user and algo_form.is_valid():
             title = form.cleaned_data['title']
             file = form.cleaned_data.get('file')
             url = form.cleaned_data.get('url')
             video_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
+            algo_obj = algo_form.cleaned_data['algo']
+            format_obj = algo_form.cleaned_data['format']
+            ratio = algo_form.cleaned_data.get('ratio') or 0.5
+
             os.makedirs(video_dir, exist_ok=True)
 
             if file:
@@ -118,23 +123,25 @@ def home(request):
                     audio_path='',
                     transcription_path='',
                 )
-                run_summary_task.delay(audio.id)
+                run_summary_task.delay(audio.id, algo=algo_obj.algo, format = format_obj.format, ratio= ratio)
 
-                success_message =  f"Видео «{title}» загружено. Идёт обработка... Вы сможете получить конспект позже."
+                success_message = f"Видео «{video.title}» загружено. Алгоритм: {algo_obj.algo}, формат: {format.format}, ratio: {ratio}. Идёт обработка..."
                 print(success_message)
                 return render(request, 'home.html', {
                     'form': VideoUploadForm(),
+                    'algo_format_form': SummaryAlgoFormatForm(),
                     'message_to_user': success_message,
                     'user_name': user.username
                 })
-    else:
-        form = VideoUploadForm()
+        else:
+            video_form = VideoUploadForm()
+            algo_format_form = SummaryAlgoFormatForm()
 
-    return render(request, 'home.html', {
-        'form': form,
-        'user_name': user.username if user else None,
-        'message_to_user': success_message if success_message else error_message
-    })
+        return render(request, 'home.html', {
+            'form': video_form,
+            'algo_format_form': algo_format_form,
+            'user_name': user.username
+        })
 #
 # def launch_summary(video_path, video_id):
 #     task = run_summary_task.delay(video_path, video_id)

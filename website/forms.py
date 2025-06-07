@@ -1,5 +1,6 @@
 from django import forms
-from .models import SummaryReview, Video, Summary, Tag, VideoTag, User
+from .models import SummaryReview, Video, Summary, Tag, VideoTag, User, Algo, Format
+
 
 
 class UserRegistrationForm(forms.ModelForm):
@@ -33,6 +34,24 @@ class LoginForm(forms.Form):
     email = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
 
+
+
+class SummaryAlgoFormatForm(forms.Form):
+    algo = forms.ModelChoiceField(
+        queryset=Algo.objects.all(),
+        label='Алгоритм суммаризации'
+    )
+    format = forms.ModelChoiceField(
+        queryset=Format.objects.all(),
+        label='Формат конспекта'
+    )
+    ratio = forms.FloatField(
+        label='Процент предложений (ratio)',
+        min_value=0.1,
+        max_value=1.0,
+        required=False,
+        initial=0.5
+    )
 
 class VideoUploadForm(forms.Form):
     title = forms.CharField(max_length=255)

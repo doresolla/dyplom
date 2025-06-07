@@ -258,40 +258,36 @@ class Text:
     #     # self.data['text_rank'] = [summary]
     #     return summary
 
-    def sumy_sum(self, format='txt'):
+    def sumy_sum(self, algo, format='txt' ):
+        from sumy.summarizers.lsa import LsaSummarizer
+        from sumy.summarizers.lex_rank import LexRankSummarizer
+        from sumy.summarizers.text_rank import TextRankSummarizer
+        from sumy.summarizers.luhn import LuhnSummarizer
+        from sumy.nlp.tokenizers import Tokenizer
+        from sumy.parsers.plaintext import PlaintextParser
         # , {k: v for k, v in freqTable.items() if v != 1}
-        lsa_sum = lsa.LsaSummarizer()
-        lex_sum = lex_rank.LexRankSummarizer()
-        text_rank_sum = text_rank.TextRankSummarizer()
-        luhn_sum = luhn.LuhnSummarizer()
+        algo_map = {
+            'lsa': LsaSummarizer(),
+            'lex_rank': LexRankSummarizer(),
+            'text_rank_sumy': TextRankSummarizer(),
+            'luhn': LuhnSummarizer()
+        }
         text = ''
-        txt_file = os.path.join(self.abs_folder,self.name + ".txt" )
-        parser = plaintext.PlaintextParser.from_file(txt_file, Tokenizer('russian'))
+        txt_file = os.path.join(self.abs_folder, self.name + ".txt")
+        parser = PlaintextParser.from_file(txt_file, Tokenizer('russian'))
+        if algo not in algo_map:
+            raise ValueError(f"Unsupported algo: {algo}")
 
-        for sen in lsa_sum(parser.document, self.sentences_count):
-            text += str(sen) + ' '
-        # self.data['lsa'] = [text]
-        self.sent_para_summary("lsa", text)
+        summarizer = algo_map[algo]
 
-        text = ''
-        for sen in lex_sum(parser.document, self.sentences_count):
+        for sen in summarizer(parser.document, self.sentences_count):
             text += str(sen) + ' '
-        # self.data['lex_rank'] = [text]
-        self.sent_para_summary("lex_rank", text)
-        text = ''
 
-        for sen in text_rank_sum(parser.document, self.sentences_count):
-            text += str(sen) + ' '
-        # self.data['text_rank_sumy'] = [text]
-        self.sent_para_summary("text_rank_sumy", text)
-        text = ''
+        self.sent_para_summary(algo, text)
 
-        for sen in luhn_sum(parser.document, self.sentences_count):
-            text += str(sen) + ' '
-        # self.data['luhn'] = [text]
-        self.sent_para_summary("luhn", text)
-        names = [f'{self.abs_folder}/{x}.{format}' for x in ['lsa','lex_rank','text_rank_sumy','luhn']]
-        return names
+        name = f'{self.abs_folder}/{algo}.{format}'
+        return name
+
 
     def contains_word(self, sentence):
         sentence_words = set(sentence.lower().split())

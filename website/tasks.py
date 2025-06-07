@@ -1,18 +1,19 @@
 from celery import shared_task
 from .mainAction import generate_summary
-from .models import Audio, Summary, User
+from .models import Audio, Summary, Format, Algo, User
 import os
 from django.core.mail import send_mail
 @shared_task(bind=True)
-def run_summary_task(self, audio_id):
+def run_summary_task(self, audio_id, algo, format, ratio):
     audio = Audio.objects.get(id=audio_id)
     video = audio.video
-    video_id = video.id
-    video_path = video.video_path
+    algo_obj = algo
+    format_obj = format
     user = User.objects.filter(username=video.author).first()
-    print(f"[TASK] Start generating summary for Video ID {video_id}")
+    print(f"[TASK] Start generating summary for Video ID {video.id}")
 
-    summary_path, error_message = generate_summary(video_path, video_id, format='docx', ratio=0.5)
+    summary_path, error_message = generate_summary(
+        video.video_path, video.id, format=format_obj, ratio=ratio, algo=algo_obj)
 
     if error_message:
         print(f"[TASK ERROR] Error generating summary for Audio ID {audio_id}: {error_message}")
@@ -29,7 +30,8 @@ def run_summary_task(self, audio_id):
         Summary.objects.create(
             audio=audio,
             file_path=os.path.abspath(summary_path),
-            format='docx',
+            format=Format.objects.get(format=format_obj),
+            algorithm=Algo.objects.get(algo=algo_obj),
         )
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
