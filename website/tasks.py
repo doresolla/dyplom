@@ -32,6 +32,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
             file_path=os.path.abspath(summary_path),
             format=Format.objects.get(format=format_obj),
             algorithm=Algo.objects.get(algo=algo_obj),
+            user=user
         )
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
