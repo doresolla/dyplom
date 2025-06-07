@@ -9,7 +9,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     video = audio.video
     algo_obj = algo
     format_obj = format
-    user = User.objects.filter(username=video.author).first()
+    user = User.objects.filter(user_id=video.author).first()
     print(f"[TASK] Start generating summary for Video ID {video.id}")
     print(f'ALGORITHM = {algo_obj}')
     summary_path, error_message = generate_summary(
@@ -36,6 +36,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 user=user
             )
         else:
+
             print(f'user is {user}')
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
