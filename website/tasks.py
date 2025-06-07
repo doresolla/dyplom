@@ -17,7 +17,7 @@ def run_summary_task(self, audio_id):
     if error_message:
         print(f"[TASK ERROR] Error generating summary for Audio ID {audio_id}: {error_message}")
 
-        # Можно при желании записать ошибку в БД — например, в поле Audio или SummaryReview
+        # РњРѕР¶РЅРѕ РїСЂРё Р¶РµР»Р°РЅРёРё Р·Р°РїРёСЃР°С‚СЊ РѕС€РёР±РєСѓ РІ Р‘Р” вЂ” РЅР°РїСЂРёРјРµСЂ, РІ РїРѕР»Рµ Audio РёР»Рё SummaryReview
 
         return {
             'status': 'error',
@@ -25,7 +25,7 @@ def run_summary_task(self, audio_id):
         }
 
     if summary_path:
-        # Добавляем Summary в БД:
+        # Р”РѕР±Р°РІР»СЏРµРј Summary РІ Р‘Р”:
         Summary.objects.create(
             audio=audio,
             file_path=os.path.abspath(summary_path),
@@ -35,8 +35,8 @@ def run_summary_task(self, audio_id):
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
         if user and user.email:
             send_mail(
-                subject="Конспект готов",
-                message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
+                subject="РљРѕРЅСЃРїРµРєС‚ РіРѕС‚РѕРІ",
+                message=f"РљРѕРЅСЃРїРµРєС‚ РїРѕ РІРёРґРµРѕ '{video.title}' РіРѕС‚РѕРІ! Р’С‹ РјРѕР¶РµС‚Рµ РїРѕСЃРјРѕС‚СЂРµС‚СЊ РµРіРѕ РІ Р»РёС‡РЅРѕРј РєР°Р±РёРЅРµС‚Рµ.",
                 from_email=None,
                 recipient_list=[user.email],
                 fail_silently=True,
@@ -46,7 +46,7 @@ def run_summary_task(self, audio_id):
             'summary_path': os.path.abspath(summary_path)
         }
 
-    # если и summary_path == None и error_message == None (маловероятно, но на всякий случай):
+    # РµСЃР»Рё Рё summary_path == None Рё error_message == None (РјР°Р»РѕРІРµСЂРѕСЏС‚РЅРѕ, РЅРѕ РЅР° РІСЃСЏРєРёР№ СЃР»СѓС‡Р°Р№):
     print(f"[TASK ERROR] Unknown error occurred for Audio ID {audio_id}")
 
     return {
