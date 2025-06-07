@@ -58,21 +58,7 @@ class Main(QRunnable):
         dest_folder = path.join(current_dir, file.folder_name)
         cut = str(dest_folder + 'cut.wav')
         audio.split_video(file.folder_name + file.filename, start, start, cut)
-        # model = whisper.load_model("small", in_memory=True)
-        # cut = whisper.load_audio(cut)
-        # cut = whisper.pad_or_trim(cut)
-        # mel = whisper.log_mel_spectrogram(cut).to(model.device)
-        # _, probs = model.detect_language(mel)
-        #
-        # output = sorted(probs.items(), key=lambda x: x[1], reverse=True)
-        # print("Вероятности появления различных языков:", output)
-        # lang = output[0]
-        # print("Язык - ", lang)
-        # # если есть неопределенность в языке
-        # if output[1][1] > 0.2 or lang[0] != 'ru':
-        #     print(output[1])
-        #     self.print_signal.result.emit("Поддержка других языков недоступна")
-        #     return
+
         if not (path.isfile(file.folder_name+file.filename[:file.filename.rindex('.')] + '.txt')):
             try:
                 # file.recognizeSpeech([file.folder_name + file.filename])
@@ -132,7 +118,7 @@ def generate_summary(url, video_id, algo, format='docx', ratio=0.5):
 
     if isinstance(file, audio.AudioFile):
         print(f'ID-{video_id}:{os.path.splitext(file.filename)[0]}')
-        summary_path, error_message = process_file(file, format, video_id, algo, ratio=ratio)
+        summary_path, error_message = process_file(file, format=format, video_id=video_id, algo=algo, ratio=ratio)
 
         print(f'ID-{video_id}: filename={file.filename}')
         os.rename(summary_path, file.filename)
@@ -155,9 +141,10 @@ def process_file(file, format, video_id, algo, ratio=0.5):
     print(f"ID-{video_id}: Выполняется обработка текста")
     text_to_sum = Text(file.abs_filename,video_id, file.chapters,SEN_PERCENT=ratio)
     try:
+        print(f'PROCESS_FILE: ALGO={algo}')
         text_to_sum.sent_summary()
         filename_path = text_to_sum.sumy_sum(algo=algo, format=format)
-        text_to_sum.compare_sum()
+        # text_to_sum.compare_sum()
         print(f"ID-{video_id}: Работа завершена")
         print(f"ID-{video_id}: Конспекты для видео \"{text_to_sum.name}\" сохранены")
         return filename_path, None

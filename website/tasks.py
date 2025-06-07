@@ -11,7 +11,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     format_obj = format
     user = User.objects.filter(username=video.author).first()
     print(f"[TASK] Start generating summary for Video ID {video.id}")
-
+    print(f'ALGORITHM = {algo_obj}')
     summary_path, error_message = generate_summary(
         video.video_path, video.id, format=format_obj, ratio=ratio, algo=algo_obj)
 

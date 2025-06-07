@@ -162,6 +162,7 @@ class Text:
             return
         parag = []
         p = ''
+        print(f'sent_para_summary : filename = {filename}')
         filename_path = os.path.join(self.abs_folder, filename+'.txt')
         with open(filename_path, 'w', encoding='utf-8') as f:
             for para in self.paragraphs:
@@ -286,6 +287,7 @@ class Text:
         self.sent_para_summary(algo, text)
 
         name = f'{self.abs_folder}/{algo}.{format}'
+        print(f'SUMY_SUM: NAME = {name}')
         return name
 
 
@@ -329,6 +331,7 @@ class Text:
             df.to_csv(dataset)
 
     def export_to_doc(self, name, paragraphs):
+
         doc = Document()
         is_para_in_chapter = False
         head = doc.add_heading(self.name[0].upper() + self.name[1:], level=1)
