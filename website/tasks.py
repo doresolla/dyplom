@@ -10,6 +10,11 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     algo_obj = algo
     format_obj = format
     user = User.objects.filter(user_id=video.author).first()
+    print('---------------------------------------------------')
+    print(f'user = {user}')
+    print(f'user.id = {user.user_id}')
+    print('---------------------------------------------------')
+
     print(f"[TASK] Start generating summary for Video ID {video.id}")
     print(f'ALGORITHM = {algo_obj}')
     summary_path, error_message = generate_summary(
@@ -28,6 +33,9 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     if summary_path:
         # Добавляем Summary в БД:
         if user is not None:
+            print(f'user = {user}')
+            print(f'user.id = {user.user_id}')
+
             Summary.objects.create(
                 audio=audio,
                 file_path=os.path.abspath(summary_path),
