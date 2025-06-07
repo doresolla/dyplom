@@ -125,7 +125,7 @@ def home(request):
                 )
                 run_summary_task.delay(audio.id, algo=algo_obj.algo, format = format_obj.format, ratio= ratio)
 
-                success_message = f"Видео «{video.title}» загружено. Алгоритм: {algo_obj.algo}, формат: {format.format}, ratio: {ratio}. Идёт обработка..."
+                success_message = f"Видео «{video.title}» загружено. Алгоритм: {algo_obj.algo}, формат: {format_obj.format}, ratio: {ratio}. Идёт обработка..."
                 print(success_message)
                 return render(request, 'home.html', {
                     'form': VideoUploadForm(),
