@@ -49,17 +49,21 @@ def run_summary_task(self, audio_id, algo, format, ratio):
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
         if user and user.email:
-            send_mail(
-                subject="Конспект готов",
-                message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
-                from_email=None,
-                recipient_list=[user.email],
-                fail_silently=True,
-            )
-        return {
-            'status': 'success',
-            'summary_path': os.path.abspath(summary_path)
-        }
+            try:
+                print(f'Отправлено сообщение на {user.email}: {video.title}')
+                send_mail(
+                    subject="Конспект готов",
+                    message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
+                    from_email=None,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+                return {
+                    'status': 'success',
+                    'summary_path': os.path.abspath(summary_path)
+                }
+            except Exception as e:
+                print(f'Ошибка во время отправки сообщения: {e}')
 
     # если и summary_path == None и error_message == None (маловероятно, но на всякий случай):
     print(f"[TASK ERROR] Unknown error occurred for Audio ID {audio_id}")
