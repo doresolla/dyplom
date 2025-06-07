@@ -58,7 +58,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                     message=f"Конспект по видео '{video.title}' готов! Вы можете посмотреть его в личном кабинете.",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
-                    fail_silently=True,
+                    fail_silently=False,
                 )
                 return {
                     'status': 'success',
