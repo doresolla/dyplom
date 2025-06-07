@@ -23,7 +23,7 @@ from re import compile, sub
 from docx import Document
 
 # cli.download('ru_core_news_md')
-TOKEN = compile('\w+')
+TOKEN = compile(r'\w+')
 stopWords = set(stopwords.words("russian"))
 
 
