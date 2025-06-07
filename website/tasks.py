@@ -27,13 +27,16 @@ def run_summary_task(self, audio_id, algo, format, ratio):
 
     if summary_path:
         # Добавляем Summary в БД:
-        Summary.objects.create(
-            audio=audio,
-            file_path=os.path.abspath(summary_path),
-            format=Format.objects.get(format=format_obj),
-            algorithm=Algo.objects.get(algo=algo_obj),
-            user=user
-        )
+        if user is not None:
+            Summary.objects.create(
+                audio=audio,
+                file_path=os.path.abspath(summary_path),
+                format=Format.objects.get(format=format_obj),
+                algorithm=Algo.objects.get(algo=algo_obj),
+                user=user
+            )
+        else:
+            print(f'user is {user}')
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
         if user and user.email:
