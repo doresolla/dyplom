@@ -6,6 +6,7 @@ from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
+from django.db.models import Avg
 
 from .mainAction import generate_summary
 
@@ -223,6 +224,8 @@ def catalog(request):
         summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
+        avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
+        summary.avg_rating = avg_rating if avg_rating else 0
 
     return render(request, 'catalog.html', {
         'summaries': summaries,

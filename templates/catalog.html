@@ -25,9 +25,7 @@
         <!-- Рейтинг -->
         {% with reviews=summary.reviews_list  %}
           {% if reviews %}
-            {% with avg_rating=reviews|average:"user_rating" %}
-              <p>Рейтинг: {{ avg_rating|floatformat:1 }}/5 ⭐</p>
-            {% endwith %}
+            <p>Рейтинг: {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
           {% else %}
             <p>Рейтинг: нет оценок</p>
           {% endif %}
