@@ -5,27 +5,34 @@
 {% block content %}
   <h2>Каталог конспектов</h2>
 
-  {% for summary in summaries %}
-    <div class="summary-card">
-      <h3>{{ summary.audio.video.title }}</h3>
-      <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
-      <p><strong>Транскрипция:</strong><br>{{ summary.transcript_text }}</p>
-      <p><strong>Конспект:</strong><br>{{ summary.summary_text }}</p>
-      <p>
-        {% if user %}
-          {% if summary.is_favorite %}
-            <form method="post" action="{% url 'remove_favorite' summary.audio.video.id %}">
-              {% csrf_token %}
-              <button type="submit">Удалить из избранного</button>
-            </form>
-          {% else %}
-            <form method="post" action="{% url 'add_favorite' summary.audio.video.id %}">
-              {% csrf_token %}
-              <button type="submit">Добавить в избранное</button>
-            </form>
+  <div class="summary-grid">
+    {% for summary in summaries %}
+      <div class="summary-card">
+        <h3>{{ summary.audio.video.title }}</h3>
+        <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
+        <p><strong>Транскрипция:</strong><br>
+          {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:50 }} {% else %} Нет транскрипции {% endif %}
+        </p>
+        <p><strong>Конспект:</strong><br>
+          {% if summary.summary_text %} {{ summary.summary_text|truncatewords:50 }} {% else %} Нет конспекта {% endif %}
+        </p>
+        <div class="favorite-button">
+          {% if user %}
+            {% if summary.is_favorite %}
+              <form method="post" action="{% url 'remove_favorite' summary.audio.video.id %}">
+                {% csrf_token %}
+                <button type="submit">Удалить из избранного</button>
+              </form>
+            {% else %}
+              <form method="post" action="{% url 'add_favorite' summary.audio.video.id %}">
+                {% csrf_token %}
+                <button type="submit">Добавить в избранное</button>
+              </form>
+            {% endif %}
           {% endif %}
-        {% endif %}
-      </p>
-    </div>
-  {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
 {% endblock %}
