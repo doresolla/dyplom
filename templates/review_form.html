@@ -1,7 +1,12 @@
-<h2>Оставить отзыв на: {{ summary.video.title }}</h2>
+{% extends 'base.html' %}
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Сохранить</button>
-</form>
+{% block title %}Оставить отзыв{% endblock %}
+
+{% block content %}
+  <h2>Оставить отзыв для {{ summary.audio.video.title }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Сохранить отзыв</button>
+  </form>
+{% endblock %}
