@@ -1,0 +1,35 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Автоматическое конспектирование видеолекций</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+    <!-- Навигационное меню -->
+    <nav>
+        <a href="/">Главная</a>
+        <a href="/catalog/">Каталог</a>
+        {% if request.session.user_id %}
+            <a href="/dashboard/">Личный кабинет</a>
+            <a href="/logout/">Выход</a>
+        {% else %}
+            <a href="/login/">Вход</a>
+            <a href="/register/">Регистрация</a>
+        {% endif %}
+    </nav>
+
+    <!-- Контент страницы -->
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Футер -->
+    <footer>
+        <p>Автор сайта: ФИО или никнейм, 2025 ©</p>
+    </footer>
+
+</body>
+</html>
