@@ -196,20 +196,42 @@ def catalog(request):
     user_id = request.session.get('user_id')
     user = User.objects.filter(pk=user_id).first()
 
-    summaries = Summary.objects.select_related('audio__video').prefetch_related('reviews')
+    query = request.GET.get('q', '')
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+
+    summaries = Summary.objects.select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
+
+    # Поиск по названию видео
+    if query:
+        summaries = summaries.filter(
+            audio__video__title__icontains=query
+        )
+
+    # Поиск по дате (диапазон)
+    if date_from and date_to:
+        summaries = summaries.filter(created_at__range=[date_from, date_to])
+    elif date_from:
+        summaries = summaries.filter(created_at__gte=date_from)
+    elif date_to:
+        summaries = summaries.filter(created_at__lte=date_to)
 
     for summary in summaries:
         summary.video = summary.audio.video
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
-        if user:
-            summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists()
-            summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
+        summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
+        summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
+        summary.reviews = summary.reviews.all()  # для шаблона {% with reviews=summary.reviews %}
 
     return render(request, 'catalog.html', {
         'summaries': summaries,
-        'user': user
+        'user': user,
+        'query': query,
+        'date_from': date_from,
+        'date_to': date_to
     })
+
 
 
 @require_POST
