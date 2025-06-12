@@ -23,7 +23,7 @@
         <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
 
         <!-- Рейтинг -->
-        {% with reviews=summary.reviews.all %}
+        {% with reviews=summary.reviews_list  %}
           {% if reviews %}
             {% with avg_rating=reviews|average:"user_rating" %}
               <p>Рейтинг: {{ avg_rating|floatformat:1 }}/5 ⭐</p>

@@ -222,7 +222,7 @@ def catalog(request):
         summary.summary_text = summary.get_file_text()
         summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
-        summary.reviews = summary.reviews.all()  # для шаблона {% with reviews=summary.reviews %}
+        summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
 
     return render(request, 'catalog.html', {
         'summaries': summaries,
