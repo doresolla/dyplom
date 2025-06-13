@@ -45,7 +45,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-ALLOWED_HOSTS = [env('ALLOWED_HOSTS'), 'localhost','212.233.91.110']
+ALLOWED_HOSTS = [env('ALLOWED_HOSTS'), '127.0.0.1','212.233.91.110']
 
 # CSRF_TRUSTED_ORIGINS = env('DJANGO_TRUSTED_ORIGINS','').split(',')
 # print(CSRF_TRUSTED_ORIGINS)

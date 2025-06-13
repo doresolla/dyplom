@@ -25,7 +25,10 @@
   </div>
 
   <h2>Ваши конспекты</h2>
-
+  <form method="get" action="{% url 'dashboard' %}" class="search-form">
+      <input type="text" name="q" placeholder="Поиск по названию видео" value="{{ query }}">
+      <button type="submit">🔍 Поиск</button>
+  </form>
   <div class="summary-grid">
     {% for summary in user_summaries %}
       <div class="summary-card">

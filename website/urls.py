@@ -15,6 +15,7 @@ urlpatterns = [
     path('review/<int:summary_id>/', views.add_or_edit_review, name='add_or_edit_review'),
     path('review/delete/<int:review_id>/', views.delete_review, name='delete_review'),
     path('catalog/', views.catalog, name='catalog'),
-path('favorite/add/<int:video_id>/', views.add_favorite, name='add_favorite'),
-path('favorite/remove/<int:video_id>/', views.remove_favorite, name='remove_favorite'),
+    path('favorite/add/<int:video_id>/', views.add_favorite, name='add_favorite'),
+    path('favorite/remove/<int:video_id>/', views.remove_favorite, name='remove_favorite'),
+    path('settings/', views.settings_view, name='settings'),
 ]

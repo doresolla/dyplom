@@ -11,7 +11,6 @@ from django.db.models import Avg
 from .mainAction import generate_summary
 
 from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
-from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, Tag, VideoTag
 from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
@@ -256,26 +255,86 @@ def dashboard(request):
     user = User.objects.filter(pk=user_id).first()
     if not user:
         return redirect('login_user')
-    # Все видео, загруженные пользователем
+
+    query = request.GET.get('q', '')
+
+    # Все видео пользователя
     user_videos = Video.objects.filter(author=user)
 
-    # Все аудиофайлы, связанные с этими видео
+    # Все конспекты пользователя
     user_audios = Audio.objects.filter(video__in=user_videos)
+    user_summaries = Summary.objects.filter(audio__in=user_audios).select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
 
-    # Все конспекты, полученные с этих аудио
-    user_summaries = Summary.objects.filter(audio__in=user_audios).select_related('audio__video')
+    if query:
+        user_summaries = user_summaries.filter(audio__video__title__icontains=query)
 
-    # Чтение текстов из файлов
+    # Мои избранные видео → VideoOwnership
+    favorite_video_ids = VideoOwnership.objects.filter(user=user).values_list('video_id', flat=True)
+
+    favorite_summaries = Summary.objects.filter(audio__video__id__in=favorite_video_ids).select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
+
+    # Обогащаем объекты для шаблона
     for summary in user_summaries:
-        summary.transcript_text = read_file(summary.audio.transcription_path)
-        summary.summary_text = read_file(summary.file_path)
+        summary.transcript_text = summary.audio.get_transcription_text()
+        summary.summary_text = summary.get_file_text()
+        summary.reviews_list = summary.reviews.all()
 
-    context = {
+    for summary in favorite_summaries:
+        summary.transcript_text = summary.audio.get_transcription_text()
+        summary.summary_text = summary.get_file_text()
+        summary.reviews_list = summary.reviews.all()
+
+    return render(request, 'dashboard.html', {
         'user_videos': user_videos,
         'user_summaries': user_summaries,
-    }
+        'favorite_summaries': favorite_summaries,
+        'query': query,
+    })
 
-    return render(request, 'dashboard.html', context)
+
+def settings_view(request):
+    user_id = request.session.get('user_id')
+    user = User.objects.filter(pk=user_id).first()
+    if not user:
+        return redirect('login_user')
+
+    # Пример — preferred_algo можно хранить в User или в отдельной модели UserSettings
+    preferred_algo_id = user.preferred_algo_id if hasattr(user, 'preferred_algo_id') else None
+    dark_theme = request.session.get('dark_theme', False)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'save_algo':
+            preferred_algo_id = int(request.POST.get('preferred_algo'))
+            user.preferred_algo_id = preferred_algo_id
+            user.save()
+
+        elif action == 'save_theme':
+            dark_theme = 'dark_theme' in request.POST
+            request.session['dark_theme'] = dark_theme
+
+        elif action == 'change_email':
+            new_email = request.POST.get('new_email')
+            user.email = new_email
+            user.save()
+
+        elif action == 'delete_account':
+            user.delete()
+            request.session.flush()
+            return redirect('home')
+
+        return redirect('settings')  # обновляем страницу после POST
+
+    # Получаем список алгоритмов
+    algos = Algo.objects.all()
+
+    return render(request, 'settings.html', {
+        'algos': algos,
+        'preferred_algo_id': preferred_algo_id,
+        'dark_theme': dark_theme
+    })
+
 @require_POST
 def delete_summary(request, summary_id):
     user_id = request.session.get('user_id')
