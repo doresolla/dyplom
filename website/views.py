@@ -226,6 +226,12 @@ def catalog(request):
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
         summary.avg_rating = avg_rating if avg_rating else 0
+        if summary.file_path:
+            # Получаем относительный путь относительно MEDIA_ROOT
+            relative_path = summary.file_path.replace(settings.MEDIA_ROOT, '').lstrip('/')
+            summary.download_url = settings.MEDIA_URL + relative_path
+        else:
+            summary.download_url = None
 
     return render(request, 'catalog.html', {
         'summaries': summaries,
