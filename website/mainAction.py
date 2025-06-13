@@ -121,7 +121,7 @@ def generate_summary(url, video_id, algo, format='docx', ratio=0.5):
         summary_path, error_message = process_file(file, format=format, video_id=video_id, algo=algo, ratio=ratio)
 
         print(f'ID-{video_id}: filename={file.filename}')
-        os.rename(summary_path, file.filename)
+        # os.rename(summary_path, file.filename)
 
     return summary_path, error_message
 def process_file(file, format, video_id, algo, ratio=0.5):
