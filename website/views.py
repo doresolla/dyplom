@@ -291,7 +291,12 @@ def delete_video(request, video_id):
     user = User.objects.filter(pk=user_id).first()
     if not user:
         return redirect('login_user')
-    video = get_object_or_404(Video, id=video_id)
+
+    # Получаем только видео, где автор — текущий пользователь:
+    video = get_object_or_404(Video, id=video_id, author=user)
+
+    # Подтверждение уже будет в шаблоне через confirm() (ты уже сделала это выше)
+
     video.delete()
     return redirect('dashboard')
 
