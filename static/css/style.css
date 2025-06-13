@@ -325,6 +325,7 @@ footer {
 
 
 .dashboard-main {
+    margin-left: 220px; /* ровно ширина sidebar */
     flex-grow: 1;
     padding: 2rem;
     background-color: #ffffff;
