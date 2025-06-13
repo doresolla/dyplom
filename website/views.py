@@ -250,7 +250,6 @@ def remove_favorite(request, video_id):
     if user:
         VideoOwnership.objects.filter(user=user, video_id=video_id).delete()
     return redirect('catalog')
-
 def dashboard(request):
     user_id = request.session.get('user_id')
     user = User.objects.filter(pk=user_id).first()
@@ -258,6 +257,7 @@ def dashboard(request):
         return redirect('login_user')
 
     query = request.GET.get('q', '')
+    section = request.GET.get('section', 'videos')  # по умолчанию — показываем видео
 
     # Все видео пользователя
     user_videos = Video.objects.filter(author=user)
@@ -279,19 +279,33 @@ def dashboard(request):
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
+        # формируем download_url
+        if summary.file_path and os.path.exists(summary.file_path):
+            relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
+            relative_path = relative_path.replace(os.path.sep, '/')
+            summary.download_url = settings.MEDIA_URL + relative_path
+        else:
+            summary.download_url = None
 
     for summary in favorite_summaries:
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
+        # формируем download_url
+        if summary.file_path and os.path.exists(summary.file_path):
+            relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
+            relative_path = relative_path.replace(os.path.sep, '/')
+            summary.download_url = settings.MEDIA_URL + relative_path
+        else:
+            summary.download_url = None
 
     return render(request, 'dashboard.html', {
         'user_videos': user_videos,
         'user_summaries': user_summaries,
         'favorite_summaries': favorite_summaries,
         'query': query,
+        'section': section
     })
-
 
 def settings_view(request):
     user_id = request.session.get('user_id')

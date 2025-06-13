@@ -15,9 +15,9 @@
             <h3>Личный кабинет</h3>
             <nav class="sidebar-nav">
                 <a href="{% url 'home' %}">Главная</a>
-                <a href="{% url 'dashboard' %}">Мои видео</a>
-                <a href="{% url 'dashboard' %}#summaries">Мои конспекты</a>
-                <a href="{% url 'dashboard' %}#favorites">Избранное</a>
+                <a href="{% url 'dashboard' %}?section=videos" class="{% if section == 'videos' %}active-sidebar-link{% endif %}">Мои видео</a>
+                <a href="{% url 'dashboard' %}?section=summaries" class="{% if section == 'summaries' %}active-sidebar-link{% endif %}">Мои конспекты</a>
+                <a href="{% url 'dashboard' %}?section=favorites" class="{% if section == 'favorites' %}active-sidebar-link{% endif %}">Избранное</a>
                 <a href="{% url 'settings' %}">Настройки</a>
                 <a href="#" onclick="confirmLogout(event)">Выйти из аккаунта</a>
             </nav>
