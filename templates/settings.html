@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Настройки{% endblock %}
+
+{% block content %}
+<h2>Настройки</h2>
+
+<!-- Предпочтительный алгоритм суммаризации -->
+<h3>Предпочтительный алгоритм суммаризации</h3>
+<form method="post" action="{% url 'settings' %}">
+    {% csrf_token %}
+    <label for="preferred_algo">Алгоритм:</label>
+    <select name="preferred_algo" id="preferred_algo">
+        {% for algo in algos %}
+            <option value="{{ algo.id }}" {% if algo.id == preferred_algo_id %}selected{% endif %}>
+                {{ algo.algo }}
+            </option>
+        {% endfor %}
+    </select>
+    <button type="submit" name="action" value="save_algo">Сохранить алгоритм</button>
+</form>
+
+<!-- Тёмная тема -->
+<h3>Тёмная тема</h3>
+<form method="post" action="{% url 'settings' %}">
+    {% csrf_token %}
+    <label>
+        <input type="checkbox" name="dark_theme" {% if dark_theme %}checked{% endif %}>
+        Включить тёмную тему
+    </label>
+    <button type="submit" name="action" value="save_theme">Сохранить тему</button>
+</form>
+
+<!-- Сменить почту -->
+<h3>Сменить почту</h3>
+<form method="post" action="{% url 'settings' %}">
+    {% csrf_token %}
+    <label for="new_email">Новый email:</label>
+    <input type="email" name="new_email" id="new_email" required>
+    <button type="submit" name="action" value="change_email">Сменить почту</button>
+</form>
+
+<!-- Удалить аккаунт -->
+<h3 style="color:red;">Удалить аккаунт</h3>
+<form method="post" action="{% url 'settings' %}" onsubmit="return confirm('Вы действительно хотите удалить аккаунт? Это действие необратимо.');">
+    {% csrf_token %}
+    <button type="submit" name="action" value="delete_account" style="background-color: red; color: white;">Удалить аккаунт</button>
+</form>
+{% endblock %}
