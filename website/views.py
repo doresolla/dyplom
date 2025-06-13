@@ -304,7 +304,8 @@ def dashboard(request):
         'user_summaries': user_summaries,
         'favorite_summaries': favorite_summaries,
         'query': query,
-        'section': section
+        'section': section,
+        'user_name': user.username
     })
 
 def settings_view(request):
@@ -321,9 +322,11 @@ def settings_view(request):
         action = request.POST.get('action')
 
         if action == 'save_algo':
-            preferred_algo_id = int(request.POST.get('preferred_algo'))
-            user.preferred_algo_id = preferred_algo_id
-            user.save()
+            preferred_algo_value = request.POST.get('preferred_algo')
+            if preferred_algo_value:
+                preferred_algo_id = int(preferred_algo_value)
+                user.preferred_algo_id = preferred_algo_id
+                user.save()
 
         elif action == 'save_theme':
             dark_theme = 'dark_theme' in request.POST
@@ -347,7 +350,8 @@ def settings_view(request):
     return render(request, 'settings.html', {
         'algos': algos,
         'preferred_algo_id': preferred_algo_id,
-        'dark_theme': dark_theme
+        'dark_theme': dark_theme,
+        'user_name': user.username
     })
 
 @require_POST
