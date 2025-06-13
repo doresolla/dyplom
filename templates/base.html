@@ -1,3 +1,11 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Автоматическое конспектирование видеолекций{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+</head>
 <body>
     <!-- Top Bar -->
     <div class="top-bar">
@@ -36,3 +44,14 @@
             {% block content %}{% endblock %}
         </main>
     </div>
+
+    <script>
+    function confirmLogout(event) {
+      event.preventDefault();
+      if (confirm("Вы действительно хотите выйти из аккаунта?")) {
+        window.location.href = "{% url 'logout_user' %}";
+      }
+    }
+    </script>
+</body>
+</html>
