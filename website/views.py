@@ -257,7 +257,10 @@ def dashboard(request):
         return redirect('login_user')
 
     query = request.GET.get('q', '')
-    section = request.GET.get('section', 'videos')  # по умолчанию — показываем видео
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    section = request.GET.get('section', 'videos')
+
 
     # Все видео пользователя
     user_videos = Video.objects.filter(author=user)
@@ -269,11 +272,26 @@ def dashboard(request):
     if query:
         user_summaries = user_summaries.filter(audio__video__title__icontains=query)
 
+    if date_from and date_to:
+        user_summaries = user_summaries.filter(created_at__range=[date_from, date_to])
+    elif date_from:
+        user_summaries = user_summaries.filter(created_at__gte=date_from)
+    elif date_to:
+        user_summaries = user_summaries.filter(created_at__lte=date_to)
+
     # Мои избранные видео → VideoOwnership
     favorite_video_ids = VideoOwnership.objects.filter(user=user).values_list('video_id', flat=True)
 
     favorite_summaries = Summary.objects.filter(audio__video__id__in=favorite_video_ids).select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
+    if query:
+        favorite_summaries = favorite_summaries.filter(audio__video__title__icontains=query)
 
+    if date_from and date_to:
+        favorite_summaries = favorite_summaries.filter(created_at__range=[date_from, date_to])
+    elif date_from:
+        favorite_summaries = favorite_summaries.filter(created_at__gte=date_from)
+    elif date_to:
+        favorite_summaries = favorite_summaries.filter(created_at__lte=date_to)
     # Обогащаем объекты для шаблона
     for summary in user_summaries:
         summary.transcript_text = summary.audio.get_transcription_text()

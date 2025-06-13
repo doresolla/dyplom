@@ -10,7 +10,15 @@
 {% if section == 'summaries' or section == 'favorites' %}
 <form method="get" action="{% url 'dashboard' %}" class="search-form">
     <input type="hidden" name="section" value="{{ section }}">
+
     <input type="text" name="q" placeholder="Поиск по названию видео" value="{{ query }}">
+
+    <label>Дата от:</label>
+    <input type="date" name="date_from" value="{{ date_from }}">
+
+    <label>Дата до:</label>
+    <input type="date" name="date_to" value="{{ date_to }}">
+
     <button type="submit">🔍 Поиск</button>
 </form>
 {% endif %}
