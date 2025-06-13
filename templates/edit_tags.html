@@ -1,7 +1,12 @@
-<h2>Редактировать теги для видео: {{ video.title }}</h2>
+{% extends 'base.html' %}
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Сохранить</button>
-</form>
+{% block title %}Редактировать теги для видео{% endblock %}
+
+{% block content %}
+  <h2>Редактировать теги для видео: "{{ video.title }}"</h2>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Сохранить теги</button>
+  </form>
+{% endblock %}
