@@ -27,6 +27,11 @@
         {% csrf_token %}
         <button type="submit">Удалить конспект</button>
       </form>
+      {% if summary.download_url %}
+          <a href="{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
+        {% else %}
+          <p>Конспект ещё не готов</p>
+        {% endif %}
     </div>
   {% endfor %}
 {% endblock %}
