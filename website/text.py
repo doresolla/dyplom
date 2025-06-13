@@ -372,6 +372,7 @@ class Text:
                 font = para.style.font
                 font.name = 'Times New Roman'  # Устанавливаем шрифт
                 font.size = Pt(12)
+        print(f'DOCX text.abs_folder = {self.abs_folder}')
         doc.save(os.path.join(self.abs_folder, f'{name}.docx'))
 
     def find_chapter_for_text(self, timing_dict):
