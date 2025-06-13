@@ -280,7 +280,7 @@ def dashboard(request):
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         # формируем download_url
-        if summary.file_path and os.path.exists(summary.file_path):
+        if summary.file_path:
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
             relative_path = relative_path.replace(os.path.sep, '/')
             summary.download_url = settings.MEDIA_URL + relative_path
@@ -292,7 +292,7 @@ def dashboard(request):
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         # формируем download_url
-        if summary.file_path and os.path.exists(summary.file_path):
+        if summary.file_path:
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
             relative_path = relative_path.replace(os.path.sep, '/')
             summary.download_url = settings.MEDIA_URL + relative_path
