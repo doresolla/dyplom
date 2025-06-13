@@ -11,7 +11,7 @@ from django.db.models import Avg
 from .mainAction import generate_summary
 
 from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
-from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, Tag, VideoTag
+from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, Tag, VideoTag, Algo
 from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title

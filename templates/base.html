@@ -14,11 +14,12 @@
         <aside class="sidebar">
             <h3>Личный кабинет</h3>
             <nav class="sidebar-nav">
-                <a href="{% url 'dashboard' %}">📂 Мои видео</a>
-                <a href="{% url 'dashboard' %}#summaries">📄 Мои конспекты</a>
-                <a href="{% url 'dashboard' %}#favorites">⭐ Избранное</a>
-                <a href="{% url 'settings' %}">⚙️ Настройки</a>
-                <a href="#" onclick="confirmLogout(event)">🚪 Выйти из аккаунта</a>
+                <a href="{% url 'home' %}">Главная</a>
+                <a href="{% url 'dashboard' %}">Мои видео</a>
+                <a href="{% url 'dashboard' %}#summaries">Мои конспекты</a>
+                <a href="{% url 'dashboard' %}#favorites">Избранное</a>
+                <a href="{% url 'settings' %}">Настройки</a>
+                <a href="#" onclick="confirmLogout(event)">Выйти из аккаунта</a>
             </nav>
         </aside>
         {% endif %}
