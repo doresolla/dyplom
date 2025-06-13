@@ -11,7 +11,7 @@ from django.db.models import Avg
 from .mainAction import generate_summary
 
 from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
-from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership
+from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, Tag, VideoTag
 from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
@@ -118,7 +118,8 @@ def home(request):
                     status=True,
                     source_name=source_name
                 )
-
+                default_tag, created = Tag.objects.get_or_create(tag_name='Неотсортировано')
+                VideoTag.objects.get_or_create(video=video, tag=default_tag)
                 # Создаём сущности Audio и Summary на основе результата
                 audio = Audio.objects.create(
                     video=video,
@@ -144,17 +145,6 @@ def home(request):
         'algo_format_form': algo_format_form,
         'user_name': user_name
     })
-#
-# def launch_summary(video_path, video_id):
-#     task = run_summary_task.delay(video_path, video_id)
-#     return HttpResponse(f"Обработка запущена. ID задачи: {task.id}")
-#
-# def check_task_result(request, task_id):
-#     res = AsyncResult(task_id, app=app)
-#     if res.ready():
-#         return HttpResponse(f"Готово! Summary path: {res.result}")
-#     else:
-#         return HttpResponse(f"Задача ещё выполняется.")
 
 def register_user(request):
     if request.method == 'POST':
@@ -226,9 +216,10 @@ def catalog(request):
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
         summary.avg_rating = avg_rating if avg_rating else 0
-        if summary.file_path:
-            # Получаем относительный путь относительно MEDIA_ROOT
-            relative_path = summary.file_path.replace(settings.MEDIA_ROOT, '').lstrip('/')
+        if summary.file_path and os.path.exists(summary.file_path):
+            relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
+            # на всякий случай → делаем универсально (Windows/Linux)
+            relative_path = relative_path.replace(os.path.sep, '/')
             summary.download_url = settings.MEDIA_URL + relative_path
         else:
             summary.download_url = None
@@ -309,6 +300,7 @@ def edit_video_tags(request, video_id):
     user = User.objects.filter(pk=user_id).first()
     if not user:
         return redirect('login_user')
+
     video = get_object_or_404(Video, id=video_id, author=user)
 
     if request.method == 'POST':
