@@ -374,6 +374,8 @@ class Text:
                 font.size = Pt(12)
         print(f'DOCX text.abs_folder = {self.abs_folder}')
         doc.save(os.path.join(self.abs_folder, f'{name}.docx'))
+        print(f'Проверка ls: ')
+        os.system(f'ls -lh {self.abs_folder}')
 
     def find_chapter_for_text(self, timing_dict):
         chapters_sents = {}
