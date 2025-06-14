@@ -105,7 +105,7 @@ def home(request):
                     title = yt.title
                     source_name = yt.author  # название канала
                 except Exception as e:
-                    error_message = f"NAME-{filename} - Ошибка: не удалось скачать файл. {e}"
+                    error_message = f"URL-{url}: Ошибка: не удалось скачать файл. {e}"
                     print(error_message)
                     return render(request, 'home.html', {
                         'form': form,
