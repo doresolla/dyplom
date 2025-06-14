@@ -47,7 +47,14 @@ def home(request):
             ratio = algo_form.cleaned_data.get('ratio') or 0.5
 
             os.makedirs(video_dir, exist_ok=True)
-
+            if file and not title:
+                error_message = "Укажите название для локального видео."
+                return render(request, 'home.html', {
+                    'form': form,
+                    'algo_format_form': algo_form,
+                    'user_name': user.username,
+                    'message_to_user': error_message
+                })
             if file:
                 # Загрузка локального файла
                 filename = file.name

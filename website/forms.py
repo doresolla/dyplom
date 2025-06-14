@@ -54,7 +54,7 @@ class SummaryAlgoFormatForm(forms.Form):
     )
 
 class VideoUploadForm(forms.Form):
-    title = forms.CharField(max_length=255)
+    title = forms.CharField(max_length=255, required=False)
     file = forms.FileField(required=False)
     url = forms.URLField(label='Ссылка на видео', required=False)
 
