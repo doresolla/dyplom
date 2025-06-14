@@ -46,9 +46,9 @@ class SummaryAdmin(admin.ModelAdmin):
 
 @admin.register(SummaryReview)
 class SummaryReviewAdmin(admin.ModelAdmin):
-    list_display = ('id', 'summary', 'user', 'user_rating', 'created_at')
-    list_filter = ('user_rating', 'created_at')
-    search_fields = ('text',)
+    list_display = ['review_id', 'user', 'summary', 'user_rating', 'created_at']
+    search_fields = ['user__username', 'summary__audio__video__title']
+    list_filter = ['user_rating', 'created_at']
 
 
 @admin.register(Tag)
