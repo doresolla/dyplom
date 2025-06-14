@@ -10,15 +10,19 @@ class User(models.Model):
     password = models.CharField(max_length=256)  # Храним хеш
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    def set_password(self, raw_password):
-        self.password = make_password(raw_password)
-
     def __str__(self):
         return self.username
-
     class Meta:
         db_table = 'users'
+    def edit_profile(self, username=None, email=None, phone_number=None):
+        if username: self.username = username
+        if email: self.email = email
+        if phone_number: self.phone_number = phone_number
+        self.save()
+
+    def delete_profile(self):
+        self.delete()
+
 
 
 class Video(models.Model):
@@ -35,6 +39,10 @@ class Video(models.Model):
 
     def __str__(self):
         return self.title
+
+
+    def get_status(self):
+        return 'Обработан' if self.status else 'В обработке'
 
 
 class VideoOwnership(models.Model):
@@ -58,14 +66,19 @@ class Audio(models.Model):
             return None
 
 
-
-
 class Format(models.Model):
     format_id = models.AutoField(primary_key=True)
     format = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
         return self.format
+    @classmethod
+    def add_format(cls, format_str):
+        return cls.objects.get_or_create(format_str=format_str)[0]
+
+    def delete_format(self):
+        self.delete()
+
 
 
 class Algo(models.Model):
@@ -75,6 +88,12 @@ class Algo(models.Model):
     def __str__(self):
         return self.algo
 
+    @classmethod
+    def add_algo(cls, algo_str):
+        return cls.objects.get_or_create(algo_str=algo_str)[0]
+
+    def delete_algo(self):
+        self.delete()
 
 class Summary(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name='summaries')
@@ -92,6 +111,24 @@ class Summary(models.Model):
         except Exception:
             return None
 
+    def set_format(self, format_obj):
+        self.format = format_obj
+        self.save()
+
+    def download(self):
+        # Возвращаем путь к скачиванию, если существует
+        import os
+        return self.file_path if self.file_path and os.path.exists(self.file_path) else None
+
+    def delete(self):
+        import os
+        if self.file_path and os.path.exists(self.file_path):
+            os.remove(self.file_path)
+        self.delete()
+
+    def get_file_path(self):
+        return self.file_path
+
 
 class SummaryReview(models.Model):
     summary = models.ForeignKey(Summary, on_delete=models.CASCADE, related_name='reviews')
@@ -102,7 +139,31 @@ class SummaryReview(models.Model):
 
     class Meta:
         unique_together = ('summary', 'user')
+    def set_user_rating(self, rating):
+        self.user_rating = rating
+        self.save()
 
+    def get_user_rating(self):
+        return self.user_rating
+
+    def set_text(self, text):
+        self.text = text
+        self.save()
+
+    def get_text(self):
+        return self.text
+
+    @classmethod
+    def create_review(cls, user, summary, text, rating):
+        return cls.objects.create(user=user, summary=summary, text=text, user_rating=rating)
+
+    def delete_review(self):
+        self.delete()
+
+    def edit_review(self, text=None, rating=None):
+        if text: self.text = text
+        if rating is not None: self.user_rating = rating
+        self.save()
 
 class Tag(models.Model):
     tag_name = models.CharField(max_length=100, unique=True)
@@ -110,6 +171,12 @@ class Tag(models.Model):
     def __str__(self):
         return self.tag_name
 
+    @classmethod
+    def add_tag(cls, tag_name):
+        return cls.objects.get_or_create(tag_name=tag_name)[0]
+
+    def delete_tag(self):
+        self.delete()
 
 class VideoTag(models.Model):
     video = models.ForeignKey(Video, on_delete=models.CASCADE)
@@ -117,3 +184,13 @@ class VideoTag(models.Model):
 
     class Meta:
         unique_together = ('video', 'tag')
+
+    def remove_tag(self):
+        self.delete()
+
+    def get_tag(self):
+        return self.tag
+
+    def set_tag(self, tag_obj):
+        self.tag = tag_obj
+        self.save()
