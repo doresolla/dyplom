@@ -131,7 +131,6 @@ class Summary(models.Model):
 
 
 class SummaryReview(models.Model):
-    review_id = models.AutoField(primary_key=True)
     summary = models.ForeignKey(Summary, on_delete=models.CASCADE, related_name='reviews')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
