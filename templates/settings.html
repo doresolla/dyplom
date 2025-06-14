@@ -20,17 +20,6 @@
     <button type="submit" name="action" value="save_algo">Сохранить алгоритм</button>
 </form>
 
-<!-- Тёмная тема -->
-<h3>Тёмная тема</h3>
-<form method="post" action="{% url 'settings' %}">
-    {% csrf_token %}
-    <label>
-        <input type="checkbox" name="dark_theme" {% if dark_theme %}checked{% endif %}>
-        Включить тёмную тему
-    </label>
-    <button type="submit" name="action" value="save_theme">Сохранить тему</button>
-</form>
-
 <!-- Сменить почту -->
 <h3>Сменить почту</h3>
 <form method="post" action="{% url 'settings' %}">
