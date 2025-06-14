@@ -124,7 +124,7 @@ class Summary(models.Model):
         import os
         if self.file_path and os.path.exists(self.file_path):
             os.remove(self.file_path)
-        self.delete()
+        super().delete()
 
     def get_file_path(self):
         return self.file_path
