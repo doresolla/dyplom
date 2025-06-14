@@ -49,13 +49,15 @@ class Audio(models.Model):
     video = models.OneToOneField(Video, on_delete=models.CASCADE, related_name='audio')
     audio_path = models.CharField(max_length=500)  # путь к аудиофайлу
     transcription_path = models.CharField(max_length=500)  # путь к .txt с транскриптом
-
+    error_message = models.TextField(null=True, blank=True)
     def get_transcription_text(self):
         try:
             with open(self.transcription_path, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception:
             return None
+
+
 
 
 class Format(models.Model):

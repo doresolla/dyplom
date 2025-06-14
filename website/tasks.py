@@ -25,8 +25,9 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     if error_message:
         print(f"[TASK ERROR] Error generating summary for Audio ID {audio_id}: {error_message}")
 
-        # Можно при желании записать ошибку в БД — например, в поле Audio или SummaryReview
-
+        audio = Audio.objects.get(id=audio_id)
+        audio.error_message = error_message
+        audio.save()
         return {
             'status': 'error',
             'message': error_message

@@ -51,6 +51,11 @@
     <div class="summary-grid">
         {% for summary in user_summaries %}
             <div class="summary-card">
+                {% if summary.audio.error_message %}
+                  <script>
+                    alert("⚠️ Ошибка при генерации: {{ summary.audio.error_message }}");
+                  </script>
+                {% endif %}
                 <h3>{{ summary.audio.video.title }}</h3>
                 <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
 
