@@ -1,12 +1,69 @@
 {% extends 'base.html' %}
-
-{% block title %}Редактировать теги для видео{% endblock %}
+{% block title %}Редактировать теги{% endblock %}
 
 {% block content %}
-  <h2>Редактировать теги для видео: "{{ video.title }}"</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Сохранить теги</button>
-  </form>
+<h2>Редактировать теги для видео: "{{ video.title }}"</h2>
+
+<form method="post" class="tag-form">
+  {% csrf_token %}
+
+  <div class="tag-box">
+    {% for tag in form.fields.tags.queryset %}
+      <label class="tag-item">
+        <input type="checkbox" name="tags" value="{{ tag.id }}"
+               {% if tag in form.initial.tags %}checked{% endif %}>
+        {{ tag.tag_name }}
+      </label>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="save-btn">💾 Сохранить теги</button>
+</form>
+
+<style>
+  .tag-form {
+    max-width: 600px;
+    margin-top: 1rem;
+  }
+
+  .tag-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9fcff;
+    margin-bottom: 1rem;
+  }
+
+  .tag-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    border-radius: 5px;
+    background-color: #e6f0ff;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+  }
+
+  .tag-item:hover {
+    background-color: #d0e4ff;
+  }
+
+  .save-btn {
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .save-btn:hover {
+    background-color: #005ecb;
+  }
+</style>
 {% endblock %}

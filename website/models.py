@@ -131,14 +131,13 @@ class Summary(models.Model):
 
 
 class SummaryReview(models.Model):
+    review_id = models.AutoField(primary_key=True)
     summary = models.ForeignKey(Summary, on_delete=models.CASCADE, related_name='reviews')
-    user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='summary_reviews')
-    created_at = models.DateField(auto_now_add=True)
-    text = models.TextField()
-    user_rating = models.PositiveSmallIntegerField()
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    text = models.TextField(blank=True)
+    user_rating = models.IntegerField()
 
-    class Meta:
-        unique_together = ('summary', 'user')
     def set_user_rating(self, rating):
         self.user_rating = rating
         self.save()
@@ -153,18 +152,22 @@ class SummaryReview(models.Model):
     def get_text(self):
         return self.text
 
-    @classmethod
-    def create_review(cls, user, summary, text, rating):
-        return cls.objects.create(user=user, summary=summary, text=text, user_rating=rating)
+    @staticmethod
+    def create_review(user, summary, text, user_rating):
+        return SummaryReview.objects.create(user=user, summary=summary, text=text, user_rating=user_rating)
 
     def delete_review(self):
         self.delete()
 
-    def edit_review(self, text=None, rating=None):
-        if text: self.text = text
-        if rating is not None: self.user_rating = rating
+    def edit_review(self, text=None, user_rating=None):
+        if text is not None:
+            self.text = text
+        if user_rating is not None:
+            self.user_rating = user_rating
         self.save()
 
+    def __str__(self):
+        return f"Отзыв {self.review_id} от {self.user.username} на Summary {self.summary_id}"
 class Tag(models.Model):
     tag_name = models.CharField(max_length=100, unique=True)
 

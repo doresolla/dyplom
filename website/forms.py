@@ -34,8 +34,6 @@ class LoginForm(forms.Form):
     email = forms.CharField()
     password = forms.CharField(widget=forms.PasswordInput)
 
-
-
 class SummaryAlgoFormatForm(forms.Form):
     algo = forms.ModelChoiceField(
         queryset=Algo.objects.all(),
@@ -77,15 +75,23 @@ class VideoUploadForm(forms.Form):
         return duration
 
 class SummaryReviewForm(forms.ModelForm):
+    user_rating = forms.IntegerField(
+        required=True,
+        label="Оценка (1–5)",
+        min_value=1,
+        max_value=5,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Оценка от 1 до 5'})
+    )
+
+    text = forms.CharField(
+        required=False,
+        label="Комментарий",
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control', 'placeholder': 'Оставьте отзыв (необязательно)'})
+    )
+
     class Meta:
         model = SummaryReview
         fields = ['user_rating', 'text']
-        widgets = {
-            'user_rating': forms.NumberInput(attrs={'min': 1, 'max': 5}),
-            'text': forms.Textarea(attrs={'rows': 2}),
-        }
-
-
 class SummaryForm(forms.ModelForm):
     class Meta:
         model = Summary
