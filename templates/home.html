@@ -94,11 +94,15 @@
       const ratioField = document.getElementById("ratio-field");
 
       function toggleTitleField() {
-        if (urlInput.value.trim() !== "") {
-          titleField.style.display = "none";
-        } else {
-          titleField.style.display = "block";
-        }
+          const titleInput = document.getElementById("id_title");
+
+          if (urlInput.value.trim() !== "") {
+              titleField.style.display = "none";
+              titleInput.removeAttribute("required");
+          } else {
+              titleField.style.display = "block";
+              titleInput.setAttribute("required", "required");
+          }
       }
 
       function toggleRatioField() {

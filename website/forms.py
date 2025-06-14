@@ -85,10 +85,6 @@ class SummaryReviewForm(forms.ModelForm):
             'text': forms.Textarea(attrs={'rows': 2}),
         }
 
-# class VideoUploadForm(forms.ModelForm):
-#     class Meta:
-#         model = Video
-#         fields = ['title', 'url', 'description']
 
 class SummaryForm(forms.ModelForm):
     class Meta:
