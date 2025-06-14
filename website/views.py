@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Avg
-
+from django.contrib.admin.views.decorators import staff_member_required
 from .mainAction import generate_summary
 
 from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
@@ -16,15 +16,27 @@ from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
 
+
 def home(request):
     user_id = request.session.get('user_id')
     user = User.objects.filter(pk=user_id).first() if user_id else None
     user_name = user.username if user else None
     success_message = None
     error_message = None
+    video_form = VideoUploadForm()
+    algo_format_form = SummaryAlgoFormatForm()
     if request.method == 'POST':
+
         form = VideoUploadForm(request.POST, request.FILES)
         algo_form = SummaryAlgoFormatForm(request.POST)
+
+        print("=== POST получен ===")
+        print(f"file: {form.data.get('file')}")
+        print(f"url: {form.data.get('url')}")
+        print(f"title: {form.data.get('title')}")
+        print(f"form.is_valid: {form.is_valid()}")
+        print(f"errors: {form.errors}")
+
         if form.is_valid() and user and algo_form.is_valid():
             title = form.cleaned_data['title']
             file = form.cleaned_data.get('file')
@@ -108,6 +120,13 @@ def home(request):
                     'message_to_user': error_message
                 })
             else:
+                video_object = Video.objects.filter(url=url).first()
+                if video_object:
+                    error_message = f"Видео '{video_object.title}' уже есть в БД"
+                    return render(request, 'home.html', {
+                        'form': form,
+                        'message_to_user': error_message
+                    })
                 video = Video.objects.create(
                     author=user,
                     title=title,
@@ -352,11 +371,10 @@ def settings_view(request):
 
         elif action == 'change_email':
             new_email = request.POST.get('new_email')
-            user.email = new_email
-            user.save()
+            user.edit_profile(email=new_email)
 
         elif action == 'delete_account':
-            user.delete()
+            user.delete_profile()
             request.session.flush()
             return redirect('home')
 
@@ -420,7 +438,7 @@ def add_or_edit_review(request, summary_id):
     if not user:
         return redirect('login_user')
     summary = get_object_or_404(Summary, id=summary_id)
-    review, created = SummaryReview.objects.get_or_create(author=user, summary=summary)
+    review, created = SummaryReview.objects.get_or_create(user=user, summary=summary)
 
     if request.method == 'POST':
         form = SummaryReviewForm(request.POST, instance=review)
