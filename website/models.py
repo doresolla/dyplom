@@ -19,7 +19,8 @@ class User(models.Model):
         if email: self.email = email
         if phone_number: self.phone_number = phone_number
         self.save()
-
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
     def delete_profile(self):
         self.delete()
 
