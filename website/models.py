@@ -24,8 +24,6 @@ class User(models.Model):
     def delete_profile(self):
         self.delete()
 
-
-
 class Video(models.Model):
     status = models.BooleanField(default=False)
     author = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='videos')
@@ -136,7 +134,7 @@ class SummaryReview(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     text = models.TextField(blank=True)
-    user_rating = models.IntegerField()
+    user_rating = models.IntegerField(default=0)
 
     def set_user_rating(self, rating):
         self.user_rating = rating

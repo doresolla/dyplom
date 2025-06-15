@@ -76,13 +76,18 @@ class VideoUploadForm(forms.Form):
 
 class SummaryReviewForm(forms.ModelForm):
     user_rating = forms.IntegerField(
+        label="Оценка",
         required=True,
-        label="Оценка (1–5)",
         min_value=1,
         max_value=5,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Оценка от 1 до 5'})
+        widget=forms.NumberInput(attrs={
+            'type': 'range',
+            'min': '1',
+            'max': '5',
+            'step': '1',
+            'oninput': 'this.nextElementSibling.value = this.value',
+        })
     )
-
     text = forms.CharField(
         required=False,
         label="Комментарий",

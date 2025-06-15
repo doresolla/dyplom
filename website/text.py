@@ -217,13 +217,17 @@ class Text:
 
         # Storing sentences into our summary.
         try:
+            text =''
             filename_path = os.path.join(self.abs_folder, "sent_summary.txt")
             with open(filename_path, 'w', encoding='utf-8') as f:
                 for sentence in self.sentences:
                     if sentence in sentenceValue:
                         if (sentenceValue[sentence] > ((1 + self.ratio) * average)) or (self.contains_word(sentence)):
+                            text += sentence.strip() + ". "
                             f.write(sentence.strip() + ". ")
-            return os.path.join(self.abs_folder, "sent_summary.txt")
+
+            self.export_to_doc('sent_summary', text)
+            return filename_path
         except Exception as e:
             print(e)
             print(repr(e))

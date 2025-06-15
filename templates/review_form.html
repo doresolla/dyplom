@@ -6,7 +6,20 @@
   <h2>Оставить отзыв для {{ summary.audio.video.title }}</h2>
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+
+    <div>
+      {{ form.user_rating.label_tag }}
+      {{ form.user_rating }}
+      <output style="margin-left: 10px;">{{ form.user_rating.value|default:"3" }}</output>
+      {{ form.user_rating.errors }}
+    </div>
+
+    <div>
+      {{ form.text.label_tag }}
+      {{ form.text }}
+      {{ form.text.errors }}
+    </div>
+
     <button type="submit">Сохранить отзыв</button>
   </form>
 {% endblock %}
