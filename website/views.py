@@ -186,7 +186,7 @@ def register_user(request):
             return redirect('home')  # Перенаправление на главную
     else:
         form = UserRegistrationForm()
-    return render(request, 'register.html', {'form': form})
+    return render(request, 'register.html', {'form': form, 'user_name': ' '})
 
 def login_user(request):
     error = None
@@ -207,7 +207,7 @@ def login_user(request):
     else:
         form = LoginForm()
 
-    return render(request, 'login.html', {'form': form, 'error': error})
+    return render(request, 'login.html', {'form': form, 'error': error, 'user_name': user.username if user else ' ',})
 
 def catalog(request):
     user_id = request.session.get('user_id')
@@ -252,7 +252,7 @@ def catalog(request):
 
     return render(request, 'catalog.html', {
         'summaries': summaries,
-        'user': user,
+        'user': user.username if user else ' ',
         'query': query,
         'date_from': date_from,
         'date_to': date_to
@@ -455,7 +455,7 @@ def add_or_edit_review(request, summary_id):
     else:
         form = SummaryReviewForm(instance=review)
 
-    return render(request, 'review_form.html', {'form': form, 'summary': summary})
+    return render(request, 'review_form.html', {'form': form, 'summary': summary, 'user': user.username if user else ' '})
 
 def delete_review(request, review_id):
     user_id = request.session.get('user_id')
@@ -463,7 +463,6 @@ def delete_review(request, review_id):
     if not user:
         return redirect('login_user')
     review = get_object_or_404(SummaryReview, id=review_id, author=user)
-    summary_id = review.summary.id
     review.delete()
     return redirect('dashboard')
 
@@ -479,4 +478,4 @@ def delete_account(request):
         user.delete()
         request.session.flush()  # Очистка сессии
         return redirect('home')
-    return render(request, 'confirm_delete_account.html', {'user': user})
+    return render(request, 'confirm_delete_account.html', {'user': user.username})
