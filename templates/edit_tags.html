@@ -11,7 +11,7 @@
     {% for tag in form.fields.tags.queryset %}
       <label class="tag-item">
         <input type="checkbox" name="tags" value="{{ tag.id }}"
-               {% if tag in form.initial.tags %}checked{% endif %}>
+          {% if tag in form.initial.tags %}checked{% endif %}>
         {{ tag.tag_name }}
       </label>
     {% endfor %}

@@ -47,8 +47,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 user=user
             )
             summary_dir = os.path.dirname(summary_path)
-            audio_basename = os.path.basename(summary_dir)
-            audio.transcription_path =  os.path.join(summary_dir, f"{audio_basename}.wav")
+            audio.transcription_path =  os.path.join(summary_dir, f"Исходный текст.docx")
         else:
             print(f'user is {user}')
 

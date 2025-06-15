@@ -125,7 +125,7 @@ class VideoTagForm(forms.Form):
     def save(self):
         video = self.cleaned_data['video']
         selected_tags = self.cleaned_data['tags']
-
+        print(f"Выбранные теги: {selected_tags}")  # лог
         # Удаляем старые связи
         VideoTag.objects.filter(video=video).exclude(tag__in=selected_tags).delete()
 

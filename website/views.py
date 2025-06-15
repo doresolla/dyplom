@@ -236,6 +236,7 @@ def catalog(request):
     for summary in summaries:
         summary.video = summary.audio.video
         summary.transcript_text = summary.audio.get_transcription_text()
+        print(summary)
         summary.summary_text = summary.get_file_text()
         summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
@@ -336,6 +337,9 @@ def dashboard(request):
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
+        avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
+        summary.avg_rating = avg_rating if avg_rating else 0
+
         # формируем download_url
         if summary.file_path:
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
