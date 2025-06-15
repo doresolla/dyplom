@@ -434,6 +434,7 @@ def edit_video_tags(request, video_id):
 
     if request.method == 'POST':
         form = VideoTagForm(request.POST, video=video)
+        print(f'form.is_valid() = ', form.is_valid())
         if form.is_valid():
             form.save()
             return redirect('dashboard')
