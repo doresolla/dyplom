@@ -46,8 +46,10 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 algorithm=Algo.objects.get(algo=algo_obj),
                 user=user
             )
+            summary_dir = os.path.dirname(summary_path)
+            audio_basename = os.path.basename(summary_dir)
+            audio.transcription_path =  os.path.join(summary_dir, f"{audio_basename}.wav")
         else:
-
             print(f'user is {user}')
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")

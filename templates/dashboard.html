@@ -32,7 +32,7 @@
                 <h3>{{ video.title }}</h3>
                 <p>Длительность: {{ video.duration }} сек.</p>
                 <p>Источник: {{ video.source_name }}</p>
-                <p>Дата загрузки: {{ video.uploaded_at }}</p>
+                <p>Дата загрузки: {{ video.uploaded_at|date:"d E Y" }}</p>
 
                 <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Вы действительно хотите удалить это видео?');">
                     {% csrf_token %}
@@ -50,38 +50,7 @@
     <h3>Ваши конспекты</h3>
     <div class="summary-grid">
         {% for summary in user_summaries %}
-            <div class="summary-card">
-                {% if summary.audio.error_message %}
-                  <script>
-                    alert("Ошибка при генерации: {{ summary.audio.error_message }}");
-                  </script>
-                {% endif %}
-                <h3>{{ summary.audio.video.title }}</h3>
-                <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
-
-                <button type="button" class="toggle-summary-btn" data-target="#full-summary-{{ summary.id }}">
-                    Подробнее ▼
-                </button>
-                <div id="full-summary-{{ summary.id }}" class="full-summary" style="display: none;">
-                    <p><strong>Транскрипция:</strong><br>{{ summary.transcript_text }}</p>
-                    <p><strong>Конспект:</strong><br>{{ summary.summary_text }}</p>
-                </div>
-
-                {% if summary.download_url %}
-                    <a href="{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
-                {% else %}
-                    <p>Конспект ещё не готов или файл отсутствует</p>
-                {% endif %}
-
-                <form method="post" action="{% url 'delete_summary' summary.id %}">
-                    {% csrf_token %}
-                    <button type="submit">Удалить конспект</button>
-                </form>
-
-                <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">
-                    {% if summary.my_review %}Редактировать отзыв{% else %}Добавить отзыв{% endif %}
-                </a>
-            </div>
+            {% include 'summary_card.html' with summary=summary user=user %}
         {% endfor %}
     </div>
 {% endif %}
@@ -91,24 +60,7 @@
     <h3>Мои избранные конспекты</h3>
     <div class="summary-grid">
         {% for summary in favorite_summaries %}
-            <div class="summary-card">
-                <h3>{{ summary.audio.video.title }}</h3>
-                <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
-
-                <button type="button" class="toggle-summary-btn" data-target="#full-fav-summary-{{ summary.id }}">
-                    Подробнее ▼
-                </button>
-                <div id="full-fav-summary-{{ summary.id }}" class="full-summary" style="display: none;">
-                    <p><strong>Транскрипция:</strong><br>{{ summary.transcript_text }}</p>
-                    <p><strong>Конспект:</strong><br>{{ summary.summary_text }}</p>
-                </div>
-
-                {% if summary.download_url %}
-                    <a href="{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
-                {% else %}
-                    <p>Конспект ещё не готов или файл отсутствует</p>
-                {% endif %}
-            </div>
+            {% include 'summary_card.html' with summary=summary user=user %}
         {% endfor %}
     </div>
 {% endif %}

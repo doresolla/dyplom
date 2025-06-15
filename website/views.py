@@ -252,7 +252,8 @@ def catalog(request):
 
     return render(request, 'catalog.html', {
         'summaries': summaries,
-        'user': user.username if user else ' ',
+        'user': user if user else ' ',
+        'user_name': user.username if user else None,
         'query': query,
         'date_from': date_from,
         'date_to': date_to
@@ -416,8 +417,6 @@ def delete_video(request, video_id):
     # Получаем только видео, где автор — текущий пользователь:
     video = get_object_or_404(Video, id=video_id, author=user)
 
-    # Подтверждение уже будет в шаблоне через confirm() (ты уже сделала это выше)
-
     video.delete()
     return redirect('dashboard')
 
@@ -437,7 +436,7 @@ def edit_video_tags(request, video_id):
     else:
         form = VideoTagForm(video=video)
 
-    return render(request, 'edit_tags.html', {'form': form, 'video': video})
+    return render(request, 'edit_tags.html', {'form': form, 'video': video, 'user_name': user.username if user else ' '})
 
 def add_or_edit_review(request, summary_id):
     user_id = request.session.get('user_id')
@@ -455,7 +454,7 @@ def add_or_edit_review(request, summary_id):
     else:
         form = SummaryReviewForm(instance=review)
 
-    return render(request, 'review_form.html', {'form': form, 'summary': summary, 'user': user.username if user else ' '})
+    return render(request, 'review_form.html', {'form': form, 'summary': summary, 'user_name': user.username if user else ' '})
 
 def delete_review(request, review_id):
     user_id = request.session.get('user_id')
@@ -478,4 +477,4 @@ def delete_account(request):
         user.delete()
         request.session.flush()  # Очистка сессии
         return redirect('home')
-    return render(request, 'confirm_delete_account.html', {'user': user.username})
+    return render(request, 'confirm_delete_account.html', {'user_name': user.username})

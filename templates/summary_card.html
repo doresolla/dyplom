@@ -1,0 +1,73 @@
+<div class="summary-card">
+<h3>{{ summary.audio.video.title }}</h3>
+<p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
+
+<!-- Рейтинг -->
+{% with reviews=summary.reviews_list  %}
+  {% if reviews %}
+    <p>Рейтинг: {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
+  {% else %}
+    <p>Рейтинг: нет оценок</p>
+  {% endif %}
+{% endwith %}
+
+<!-- Транскрипция (коротко) -->
+<p><strong>Транскрипция:</strong><br>
+  {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:50 }} {% else %} Нет транскрипции {% endif %}
+</p>
+
+<!-- Конспект (коротко) -->
+<p><strong>Конспект:</strong><br>
+  {% if summary.summary_text %} {{ summary.summary_text|truncatewords:15 }} {% else %} Нет конспекта {% endif %}
+</p>
+
+<!-- Кнопка "Подробнее" -->
+<button type="button" class="toggle-summary-btn" data-target="#full-summary-{{ summary.id }}">
+  Подробнее ▼
+</button>
+<div id="full-summary-{{ summary.id }}" class="full-summary" style="display: none;">
+  <p>{{ summary.summary_text }}</p>
+</div>
+
+<!-- Кнопка "Избранное" -->
+<div class="favorite-button">
+  {% if user %}
+    {% if summary.is_favorite %}
+      <form method="post" action="{% url 'remove_favorite' summary.audio.video.id %}">
+        {% csrf_token %}
+        <button type="submit">⭐ Удалить из избранного</button>
+      </form>
+    {% else %}
+      <form method="post" action="{% url 'add_favorite' summary.audio.video.id %}">
+        {% csrf_token %}
+        <button type="submit">⭐ Добавить в избранное</button>
+      </form>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="my-review">
+  <p><strong>Средняя оценка:</strong> {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
+    {% if summary.my_review %}
+      <div class="my-review">
+        <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
+        {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
+        <div class="review-buttons">
+          <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
+          <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="review-btn">Удалить отзыв</button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
+    {% endif %}
+</div>
+
+{% if summary.download_url %}
+   <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
+{% else %}
+  <p>Конспект ещё не готов</p>
+{% endif %}
+</div>

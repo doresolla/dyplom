@@ -4,6 +4,7 @@
 
 {% block content %}
   <h2>Оставить отзыв для {{ summary.audio.video.title }}</h2>
+<div class="review-form-wrapper">
   <form method="post">
     {% csrf_token %}
 
@@ -22,4 +23,5 @@
 
     <button type="submit">Сохранить отзыв</button>
   </form>
+</div>
 {% endblock %}
