@@ -6,7 +6,7 @@
 
 <form method="post" class="tag-form">
   {% csrf_token %}
-
+<input type="hidden" name="video" value="{{ form.video.initial.id }}">
   <div class="tag-box">
     {% for tag in form.fields.tags.queryset %}
       <label class="tag-item">
