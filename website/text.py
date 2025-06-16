@@ -134,9 +134,9 @@ class Text:
                 sent_para.append((sen, count))
 
             print('paragraphs', len(paragraphs))
-            self.export_to_doc('Исходный текст', paragraphs)
+
             # print('\n'.join(paragraphs))
-            paragraphs_path = os.path.join(self.abs_folder, "paragraphs.txt")
+            paragraphs_path = os.path.join(self.abs_folder, "Исходный текст.txt")
             with open(paragraphs_path, 'w', encoding="utf-8") as f:
                 f.write(text)
             return paragraphs, sent_para

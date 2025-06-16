@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
-
+import os
 
 class User(models.Model):
     user_id = models.AutoField(primary_key=True, db_column='user_ID')
@@ -107,9 +107,11 @@ class Summary(models.Model):
     def get_file_text(self):
         try:
             print(f'self.file_path={self.file_path}')
-            with open(self.file_path, 'r', encoding='utf-8') as f:
+            txt_filename = os.path.splitext(self.file_path)[0] + ".txt"
+            with open(txt_filename, 'r', encoding='utf-8') as f:
                 return f.read()
-        except Exception:
+        except Exception as e:
+            print(f'Не удалось получить файл конспекта: {e}')
             return None
 
     def set_format(self, format_obj):
