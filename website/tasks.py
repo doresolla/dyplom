@@ -46,7 +46,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 algorithm=Algo.objects.get(algo=algo_obj),
                 user=user
             )
-            summary_dir = os.path.dirname(summary_path)
+            summary_dir = os.path.dirname(os.path.abspath(summary_path))
             audio.transcription_path = os.path.join(summary_dir, f"Исходный текст.docx")
             audio.audio_path = os.path.join(summary_dir, f'{os.path.basename(summary_dir)}.wav')
 

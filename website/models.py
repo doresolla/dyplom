@@ -59,6 +59,7 @@ class Audio(models.Model):
     error_message = models.TextField(null=True, blank=True)
     def get_transcription_text(self):
         try:
+            print(f'self.transcription_path = {self.transcription_path}')
             with open(self.transcription_path, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception:
@@ -105,6 +106,7 @@ class Summary(models.Model):
 
     def get_file_text(self):
         try:
+            print(f'self.file_path={self.file_path}')
             with open(self.file_path, 'r', encoding='utf-8') as f:
                 return f.read()
         except Exception:
