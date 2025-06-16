@@ -33,9 +33,6 @@ class Text:
         self.name = basename[:basename.rindex('.')]
         self.abs_folder = os.path.dirname(abs_name)
         print('TEXT.PY')
-        print(f'self.name = {self.name}')
-        print(f'basename = {basename}')
-        print(f'self.abs_folder = {self.abs_folder}')
         self.video_id = video_id
         if chapters is None:
             chapters = []
@@ -61,7 +58,6 @@ class Text:
             self.chapters_text = self.find_chapter_for_text(timing_dict)
 
         recognize_path = os.path.join(self.abs_folder, f'{self.name}.txt')
-        print(f'recognize_path = {recognize_path}')
 
         recognized_text = ''
         with open(recognize_path, encoding='utf-8') as file_text:
@@ -162,7 +158,6 @@ class Text:
             return
         parag = []
         p = ''
-        print(f'sent_para_summary : filename = {filename}')
         filename_path = os.path.join(self.abs_folder, filename+'.txt')
         with open(filename_path, 'w', encoding='utf-8') as f:
             for para in self.paragraphs:
@@ -291,7 +286,6 @@ class Text:
         self.sent_para_summary(algo, text)
 
         name = f'{self.abs_folder}/{algo}.{format}'
-        print(f'SUMY_SUM: NAME = {name}')
         return name
 
 
@@ -376,10 +370,7 @@ class Text:
                 font = para.style.font
                 font.name = 'Times New Roman'  # Устанавливаем шрифт
                 font.size = Pt(12)
-        print(f'DOCX text.abs_folder = {self.abs_folder}')
         doc.save(os.path.join(self.abs_folder, f'{name}.docx'))
-        print(f'Проверка ls: ')
-        os.system(f'ls -lh {self.abs_folder}')
 
     def find_chapter_for_text(self, timing_dict):
         chapters_sents = {}

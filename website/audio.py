@@ -14,19 +14,14 @@ class AudioFile:
     def __init__(self, s, chapters, isThere,video_id, abs=''):
         self.filename = os.path.basename(s)
         self.folder_name = self.filename[:self.filename.rindex('.')]
-        print(f'self.filename ={self.filename}')
-        print(f'self.folder_name={self.folder_name}')
         if abs == '':
             path_to_file = f"/home/ubuntu/dyplom/media/videos/{self.folder_name}/" + self.filename
             if os.path.isfile(path_to_file):
                 self.abs_filename = path_to_file
-                print(f'11111self.abs_filename = {self.abs_filename}')
             else:
                 path_to_file = f"/home/ubuntu/dyplom/media/videos/" + self.filename
                 if os.path.isfile(path_to_file):
                     self.abs_filename = path_to_file
-                    print(f'self.abs_filename = {self.abs_filename}')
-            print(f'22222222self.abs_filename={self.abs_filename}')
         else:
             self.abs_filename = abs
         self.chapters = chapters
@@ -39,7 +34,6 @@ class AudioFile:
     def create_folder(self):
         # создание папки для хранения исходного файла и его производных
         dest_folder = os.path.join(media_root, self.folder_name)
-        print(f'dest_folder={dest_folder}')
         self.abs_folder = dest_folder
         if not os.path.isdir(dest_folder):
             os.mkdir(dest_folder)
@@ -49,27 +43,21 @@ class AudioFile:
             before = self.abs_filename
             after = os.path.join(dest_folder, self.filename)
             os.replace(before,  after)
-            print(f'replace {before} -> {after}')
             before = self.abs_filename[:self.abs_filename.rindex('.')] + '.wav'
             after = os.path.join(dest_folder, self.filename[:self.filename.rindex('.')] + '.wav')
             os.replace(before,after)
-            print(f'replace {before} -> {after}')
             before = os.path.join(media_root, f'{self.filename[:self.filename.rindex('.')]}_thumb.jpg')
             after = os.path.join(dest_folder, f'{self.filename[:self.filename.rindex('.')]}_thumb.jpg')
 
             os.replace(before,after)
-            print(f'replace {before} -> {after}')
 
             self.abs_filename = os.path.join(dest_folder, self.filename)
-            print(f'self.abs_filename = {self.abs_filename}')
             self.abs_folder = dest_folder
-            print(f'self.abs_folder = {self.abs_folder }')
             print(f"Перемещение  файла {self.filename} в директорию {self.folder_name}")
 
 
     def recognizePywhisper_cpp(self):
         txt_file = os.path.join(self.abs_folder, self.filename[:self.filename.rindex('.')] + '.txt')
-        print(f'txt_file = {txt_file}')
         if (not os.path.isfile(txt_file)):
             # Если такого файла не существует
             start_time = time()
@@ -79,7 +67,6 @@ class AudioFile:
             end_time = time()
             recognized_text = ''
             timings_file = os.path.join(self.abs_folder,  'timings.txt')
-            print(f'timings_file = {timings_file}')
             with open(timings_file, 'w', encoding='utf-8') as f:
                 for seg in segments:
                     recognized_text += seg.text + ' '
