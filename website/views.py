@@ -325,7 +325,7 @@ def dashboard(request):
     if tag_query:
         user_summaries = user_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
         favorite_summaries = favorite_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
-        user_videos = user_videos(videotag__tag__tag_name__icontains=tag_query)
+        user_videos = user_videos.filter(videotag__tag__tag_name__icontains=tag_query)
 
     # Обогащаем объекты для шаблона
     for video in user_videos:

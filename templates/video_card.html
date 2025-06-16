@@ -4,16 +4,16 @@
   <p><strong>Длительность:</strong> {{ video.duration }} сек.</p>
   <p><strong>Дата загрузки:</strong> {{ video.uploaded_at|date:"d E Y" }}</p>
 
-  <p><strong>Теги:</strong>
-    {% for tag in video.tags %}
-      <span class="tag-label">{{ tag.tag_name }}</span>
-    {% empty %}
-      <span>—</span>
-    {% endfor %}
-  </p>
-
-  <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
-
+  <div class="video-tags">
+    <p><strong>Теги:</strong>
+      {% for tag in video.tags %}
+        <span class="tag-label">{{ tag.tag_name }}</span>
+      {% empty %}
+        <span>—</span>
+      {% endfor %}
+    </p>
+    <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
+  </div>
   {% if video.download_url %}
     <a href="{{ video.download_url }}" download class="download-btn">🎬 Скачать видео</a>
   {% endif %}
@@ -31,5 +31,9 @@
     margin: 0 4px 4px 0;
     border-radius: 4px;
     font-size: 0.85rem;
+}
+  .video-tags {
+    margin-top: 0.8rem;
+    margin-bottom: 0.5rem;
 }
 </style>
