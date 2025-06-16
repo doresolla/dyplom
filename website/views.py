@@ -249,7 +249,7 @@ def catalog(request):
     for summary in summaries:
         summary.video = summary.audio.video
         summary.transcript_text = summary.audio.get_transcription_text()
-        print(summary)
+        print(summary.transcript_text)
         summary.summary_text = summary.get_file_text()
         summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
@@ -340,6 +340,7 @@ def dashboard(request):
     for summary in user_summaries:
         summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
+        print('summary.transcript_text = ',summary.transcript_text)
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
@@ -355,6 +356,7 @@ def dashboard(request):
     for summary in favorite_summaries:
         summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
+        print('summary.transcript_text = ',summary.transcript_text)
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']

@@ -18,6 +18,9 @@
     <label>Дата до:</label>
     <input type="date" name="date_to" value="{{ date_to }}">
 
+    <label>Тег:</label>
+    <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
+
     <button type="submit">🔍 Поиск</button>
 </form>
 
@@ -41,7 +44,7 @@
                     <button type="submit">Удалить видео</button>
                 </form>
                 <p><strong>Теги:</strong>
-                  {% for tag in summary.tags %}
+                  {% for tag in video.tags %}
                     <span class="tag-label">{{ tag.tag_name }}</span>
                   {% empty %}
                     <span class="tag-label">—</span>
