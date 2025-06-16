@@ -338,3 +338,18 @@ footer {
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0,0,0,0.05);
 }
+
+<style>
+  .tag-label {
+    display: inline-block;
+    background: #e6f0ff;
+    padding: 2px 6px;
+    margin: 0 4px 4px 0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+  .video-tags {
+    margin-top: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+</style>

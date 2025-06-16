@@ -24,15 +24,17 @@ def home(request):
     success_message = None
     error_message = None
     video_form = VideoUploadForm()
-    algo_form = SummaryAlgoFormatForm()
-    preferred_algo = None
-    if user and hasattr(user, 'preferred_algo_id'):
+    initial_data = {}
+    if user and hasattr(user, 'preferred_algo_id') and user.preferred_algo_id:
         preferred_algo = Algo.objects.filter(pk=user.preferred_algo_id).first()
+        if preferred_algo:
+            initial_data['algo'] = preferred_algo
     else:
-        preferred_algo = Algo.objects.filter(algo='lsa').first()
+        default_algo = Algo.objects.filter(algo='lsa').first()
+        if default_algo:
+            initial_data['algo'] = default_algo
 
-    if preferred_algo:
-        algo_form.fields['algo'].initial = preferred_algo
+    algo_form = SummaryAlgoFormatForm(initial=initial_data)
     if request.method == 'POST':
 
         form = VideoUploadForm(request.POST, request.FILES)

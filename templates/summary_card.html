@@ -13,7 +13,7 @@
 
 <!-- Транскрипция (коротко) -->
 <p><strong>Транскрипция:</strong><br>
-  {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:50 }} {% else %} Нет транскрипции {% endif %}
+  {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:15 }} {% else %} Нет транскрипции {% endif %}
 </p>
 
 <!-- Конспект (коротко) -->
