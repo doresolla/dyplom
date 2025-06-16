@@ -47,8 +47,9 @@ def run_summary_task(self, audio_id, algo, format, ratio):
                 user=user
             )
             summary_dir = os.path.dirname(os.path.abspath(summary_path))
-            audio.transcription_path = os.path.join(summary_dir, f"Исходный текст.docx")
+            audio.transcription_path = os.path.join(summary_dir, f"Исходный текст.txt")
             audio.audio_path = os.path.join(summary_dir, f'{os.path.basename(summary_dir)}.wav')
+            audio.save()
 
         else:
             print(f'user is {user}')
