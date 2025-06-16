@@ -53,7 +53,7 @@ def home(request):
             algo_obj = algo_form.cleaned_data['algo']
             format_obj = algo_form.cleaned_data['format']
             ratio = algo_form.cleaned_data.get('ratio') or 0.5
-
+            print(f'url = d{url}d')
             os.makedirs(video_dir, exist_ok=True)
             if file and not title:
                 error_message = "Укажите название для локального видео."
@@ -131,17 +131,10 @@ def home(request):
 
                 return render(request, 'home.html', {
                     'form': form,
-                    'user_name': user.username if user else None,
+                    'user_name': user.username if user else ' ',
                     'message_to_user': error_message
                 })
             else:
-                video_object = Video.objects.filter(url=url).first()
-                if video_object:
-                    error_message = f"Видео '{video_object.title}' уже есть в БД"
-                    return render(request, 'home.html', {
-                        'form': form,
-                        'message_to_user': error_message
-                    })
                 video = Video.objects.create(
                     author=user,
                     title=title,
