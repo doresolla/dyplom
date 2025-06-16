@@ -24,19 +24,18 @@ def home(request):
     success_message = None
     error_message = None
     video_form = VideoUploadForm()
-    algo_format_form = SummaryAlgoFormatForm()
+    algo_form = SummaryAlgoFormatForm()
+    preferred_algo = None
     if user and hasattr(user, 'preferred_algo_id'):
         preferred_algo = Algo.objects.filter(pk=user.preferred_algo_id).first()
-        if preferred_algo:
-            algo_format_form.fields['algo'].initial = preferred_algo
     else:
-        default_algo = Algo.objects.filter(algo='lsa').first()
-        if default_algo:
-            algo_format_form.fields['algo'].initial = default_algo
+        preferred_algo = Algo.objects.filter(algo='lsa').first()
+
+    if preferred_algo:
+        algo_form.fields['algo'].initial = preferred_algo
     if request.method == 'POST':
 
         form = VideoUploadForm(request.POST, request.FILES)
-        algo_form = SummaryAlgoFormatForm(request.POST)
 
         print("=== POST получен ===")
         print(f"file: {form.data.get('file')}")
@@ -333,7 +332,6 @@ def dashboard(request):
     for summary in user_summaries:
         summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
-        print('summary.transcript_text = ',summary.transcript_text)
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
@@ -349,7 +347,6 @@ def dashboard(request):
     for summary in favorite_summaries:
         summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
-        print('summary.transcript_text = ',summary.transcript_text)
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']

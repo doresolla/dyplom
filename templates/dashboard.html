@@ -36,7 +36,7 @@
                 <p>Дата загрузки: {{ video.uploaded_at|date:"d E Y" }}</p>
                 {% if summary.audio.video.video_path %}
                   <a href="{{ MEDIA_URL }}{{ summary.audio.video.video_path|cut:MEDIA_ROOT|cut:'\\' }}" download class="download-btn">
-                    🎬 Скачать видео
+                    Скачать видео
                   </a>
                 {% endif %}
                 <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Вы действительно хотите удалить это видео?');">
