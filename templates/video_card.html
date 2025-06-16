@@ -1,0 +1,35 @@
+<div class="summary-card">
+  <h3>{{ video.title }}</h3>
+  <p><strong>Источник:</strong> {{ video.source_name }}</p>
+  <p><strong>Длительность:</strong> {{ video.duration }} сек.</p>
+  <p><strong>Дата загрузки:</strong> {{ video.uploaded_at|date:"d E Y" }}</p>
+
+  <p><strong>Теги:</strong>
+    {% for tag in video.tags %}
+      <span class="tag-label">{{ tag.tag_name }}</span>
+    {% empty %}
+      <span>—</span>
+    {% endfor %}
+  </p>
+
+  <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
+
+  {% if video.download_url %}
+    <a href="{{ video.download_url }}" download class="download-btn">🎬 Скачать видео</a>
+  {% endif %}
+
+  <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Удалить видео?');">
+    {% csrf_token %}
+    <button type="submit">Удалить</button>
+  </form>
+</div>
+<style>
+  .tag-label {
+    display: inline-block;
+    background: #e6f0ff;
+    padding: 2px 6px;
+    margin: 0 4px 4px 0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+</style>

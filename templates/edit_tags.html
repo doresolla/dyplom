@@ -7,12 +7,10 @@
 <form method="post" class="tag-form">
   {% csrf_token %}
 <input type="hidden" name="video" value="{{ form.video.initial.id }}">
-  <div class="tag-box">
-    {% for tag in form.fields.tags.queryset %}
+   <div class="tag-box">
+    {% for checkbox in form.tags %}
       <label class="tag-item">
-        <input type="checkbox" name="tags" value="{{ tag.id }}"
-          {% if tag in form.initial.tags %}checked{% endif %}>
-        {{ tag.tag_name }}
+        {{ checkbox.tag }} {{ checkbox.choice_label }}
       </label>
     {% endfor %}
   </div>

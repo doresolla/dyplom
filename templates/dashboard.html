@@ -7,7 +7,6 @@
 <h2>Личный кабинет</h2>
 
 <!-- Поиск по моим конспектам (только для summaries и favorites) -->
-{% if section == 'summaries' or section == 'favorites' %}
 <form method="get" action="{% url 'dashboard' %}" class="search-form">
     <input type="hidden" name="section" value="{{ section }}">
 
@@ -21,7 +20,6 @@
 
     <button type="submit">🔍 Поиск</button>
 </form>
-{% endif %}
 
 <!-- Секция Мои видео -->
 {% if section == 'videos' %}
@@ -33,13 +31,24 @@
                 <p>Длительность: {{ video.duration }} сек.</p>
                 <p>Источник: {{ video.source_name }}</p>
                 <p>Дата загрузки: {{ video.uploaded_at|date:"d E Y" }}</p>
-
+                {% if summary.audio.video.video_path %}
+                  <a href="{{ MEDIA_URL }}{{ summary.audio.video.video_path|cut:MEDIA_ROOT|cut:'\\' }}" download class="download-btn">
+                    🎬 Скачать видео
+                  </a>
+                {% endif %}
                 <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Вы действительно хотите удалить это видео?');">
                     {% csrf_token %}
                     <button type="submit">Удалить видео</button>
                 </form>
+                <p><strong>Теги:</strong>
+                  {% for tag in summary.tags %}
+                    <span class="tag-label">{{ tag.tag_name }}</span>
+                  {% empty %}
+                    <span class="tag-label">—</span>
+                  {% endfor %}
+                    <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
+                </p>
 
-                <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
             </div>
         {% endfor %}
     </div>

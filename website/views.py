@@ -25,6 +25,14 @@ def home(request):
     error_message = None
     video_form = VideoUploadForm()
     algo_format_form = SummaryAlgoFormatForm()
+    if user and hasattr(user, 'preferred_algo_id'):
+        preferred_algo = Algo.objects.filter(pk=user.preferred_algo_id).first()
+        if preferred_algo:
+            algo_format_form.fields['algo'].initial = preferred_algo
+    else:
+        default_algo = Algo.objects.filter(algo='lsa').first()
+        if default_algo:
+            algo_format_form.fields['algo'].initial = default_algo
     if request.method == 'POST':
 
         form = VideoUploadForm(request.POST, request.FILES)
@@ -144,8 +152,13 @@ def home(request):
                     status=True,
                     source_name=source_name
                 )
-                default_tag, created = Tag.objects.get_or_create(tag_name='Неотсортировано')
-                VideoTag.objects.get_or_create(video=video, tag=default_tag)
+                tags = form.cleaned_data.get('tags')
+                if tags:
+                    for tag in tags:
+                        VideoTag.objects.get_or_create(video=video, tag=tag)
+                else:
+                    default_tag, created = Tag.objects.get_or_create(tag_name='Неотсортировано')
+                    VideoTag.objects.get_or_create(video=video, tag=default_tag)
                 # Создаём сущности Audio и Summary на основе результата
                 audio = Audio.objects.create(
                     video=video,
@@ -243,6 +256,7 @@ def catalog(request):
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
         summary.avg_rating = avg_rating if avg_rating else 0
+        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         if summary.file_path and os.path.exists(summary.file_path):
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
             # на всякий случай → делаем универсально (Windows/Linux)
@@ -288,43 +302,48 @@ def dashboard(request):
     date_from = request.GET.get('date_from')
     date_to = request.GET.get('date_to')
     section = request.GET.get('section', 'videos')
-
+    tag_query = request.GET.get('tag')
 
     # Все видео пользователя
     user_videos = Video.objects.filter(author=user)
-
-    # Все конспекты пользователя
     user_audios = Audio.objects.filter(video__in=user_videos)
-    user_summaries = Summary.objects.filter(audio__in=user_audios).select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
-
+    user_summaries = Summary.objects.filter(audio__in=user_audios).select_related('audio__video', 'format',
+                                                                                  'algorithm').prefetch_related('reviews')
+    favorite_video_ids = VideoOwnership.objects.filter(user=user).values_list('video_id', flat=True)
+    favorite_summaries = Summary.objects.filter(audio__video__id__in=favorite_video_ids).select_related('audio__video',
+                                                                                                        'format',
+                                                                                                        'algorithm').prefetch_related('reviews')
     if query:
         user_summaries = user_summaries.filter(audio__video__title__icontains=query)
-
+        user_videos = user_videos(title__icontains=query)
+        favorite_summaries = favorite_summaries.filter(audio__video__title__icontains=query)
     if date_from and date_to:
         user_summaries = user_summaries.filter(created_at__range=[date_from, date_to])
+        favorite_summaries = favorite_summaries.filter(created_at__range=[date_from, date_to])
+        user_videos = user_videos(uploaded_at__range=[date_from, date_to])
     elif date_from:
         user_summaries = user_summaries.filter(created_at__gte=date_from)
+        favorite_summaries = favorite_summaries.filter(created_at__gte=date_from)
+        user_videos = user_videos(created_at__gte=date_from)
     elif date_to:
         user_summaries = user_summaries.filter(created_at__lte=date_to)
-
-    # Мои избранные видео → VideoOwnership
-    favorite_video_ids = VideoOwnership.objects.filter(user=user).values_list('video_id', flat=True)
-
-    favorite_summaries = Summary.objects.filter(audio__video__id__in=favorite_video_ids).select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
-    if query:
-        favorite_summaries = favorite_summaries.filter(audio__video__title__icontains=query)
-
-    if date_from and date_to:
-        favorite_summaries = favorite_summaries.filter(created_at__range=[date_from, date_to])
-    elif date_from:
-        favorite_summaries = favorite_summaries.filter(created_at__gte=date_from)
-    elif date_to:
         favorite_summaries = favorite_summaries.filter(created_at__lte=date_to)
+        user_videos = user_videos(created_at__lte=date_to)
+    if tag_query:
+        user_summaries = user_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
+        favorite_summaries = favorite_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
+        user_videos = user_videos(videotag__tag__tag_name__icontains=tag_query)
+
     # Обогащаем объекты для шаблона
+    for video in user_videos:
+        video.tags = Tag.objects.filter(videotag__video=video)
     for summary in user_summaries:
+        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
+        avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
+        summary.avg_rating = avg_rating if avg_rating else 0
         # формируем download_url
         if summary.file_path:
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
@@ -334,6 +353,7 @@ def dashboard(request):
             summary.download_url = None
 
     for summary in favorite_summaries:
+        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()

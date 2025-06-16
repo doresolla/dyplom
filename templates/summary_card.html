@@ -64,6 +64,13 @@
       <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
     {% endif %}
 </div>
+<p><strong>Теги:</strong>
+  {% for tag in summary.tags %}
+    <span class="tag-label">{{ tag.tag_name }}</span>
+  {% empty %}
+    Нет тегов
+  {% endfor %}
+</p>
 
 {% if summary.download_url %}
    <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
@@ -71,3 +78,14 @@
   <p>Конспект ещё не готов</p>
 {% endif %}
 </div>
+
+<style>
+  .tag-label {
+    display: inline-block;
+    background: #e6f0ff;
+    padding: 2px 6px;
+    margin: 0 4px 4px 0;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+</style>

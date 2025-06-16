@@ -55,7 +55,11 @@ class VideoUploadForm(forms.Form):
     title = forms.CharField(max_length=255, required=False)
     file = forms.FileField(required=False)
     url = forms.URLField(label='Ссылка на видео', required=False)
-
+    tags = forms.ModelMultipleChoiceField(
+        queryset=Tag.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
     def clean(self):
         cleaned_data = super().clean()
         file = cleaned_data.get('file')
