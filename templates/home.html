@@ -116,6 +116,11 @@
 
       // События
       fileInput.addEventListener("change", toggleTitleField);
+      fileInput.addEventListener("change", function() {
+        if (fileInput.files.length > 0) {
+          fileLabel.innerText = fileInput.files[0].name;
+        }
+      });
       urlInput.addEventListener("input", toggleTitleField);
 
       algoSelect.addEventListener("change", toggleRatioField);

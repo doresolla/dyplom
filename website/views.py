@@ -165,17 +165,17 @@ def home(request):
                 print(success_message)
                 return render(request, 'home.html', {
                     'form': VideoUploadForm(),
-                    'algo_format_form': SummaryAlgoFormatForm(),
+                    'algo_format_form': algo_form,
                     'message_to_user': success_message,
                     'user_name': user.username
                 })
     else:
         video_form = VideoUploadForm()
-        algo_format_form = SummaryAlgoFormatForm()
+        algo_form = SummaryAlgoFormatForm()
 
     return render(request, 'home.html', {
         'form': video_form,
-        'algo_format_form': algo_format_form,
+        'algo_format_form': algo_form,
         'user_name': user.username if user else ' ',
     })
 
