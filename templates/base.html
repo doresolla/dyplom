@@ -4,28 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}Автоматическое конспектирование видеолекций{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=7">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=8">
 </head>
 <body>
-    <!-- Top Bar -->
-    <div class="top-bar">
-        <div class="top-bar-left">
-            <a href="/">Главная</a>
-            <a href="/catalog/">Каталог</a>
-        </div>
-        <div class="top-bar-right">
-            {% if request.session.user_id %}
-                <a href="/logout/">Выход</a>
-            {% else %}
-                <a href="/login/">Вход</a>
-            {% endif %}
-        </div>
-    </div>
 
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
-            {% if user_name %}
+            {% if user_name != ' ' %}
             <h3>{{ user_name }}</h3>
             <nav class="sidebar-nav">
                 <a href="{% url 'home' %}">Главная</a>
@@ -39,8 +25,9 @@
             {% else %}
                 <h3>Гость</h3>
                 <nav class="sidebar-nav">
-                  <a href="{% url 'login_user' %}">Вход</a>
-                  <a href="{% url 'register_user' %}">Регистрация</a>
+                    <a href="{% url 'home' %}">Главная</a>
+                    <a href="{% url 'login_user' %}">Вход</a>
+                    <a href="{% url 'register_user' %}">Регистрация</a>
                 </nav>
             {% endif %}
         </aside>

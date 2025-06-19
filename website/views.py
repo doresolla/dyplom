@@ -20,7 +20,7 @@ from website.video import download, get_video_duration, extract_thumbnail, PROXI
 def home(request):
     user_id = request.session.get('user_id')
     user = User.objects.filter(pk=user_id).first() if user_id else None
-    user_name = user.username if user else None
+    username = user.username if user else None
     success_message = None
     error_message = None
     video_form = VideoUploadForm()
@@ -61,7 +61,7 @@ def home(request):
                 return render(request, 'home.html', {
                     'form': form,
                     'algo_format_form': algo_form,
-                    'user_name': user.username,
+                    'user_name': username,
                     'message_to_user': error_message
                 })
             if file:
@@ -77,7 +77,7 @@ def home(request):
                 if error_message:
                     return render(request, 'home.html', {
                         'form': VideoUploadForm(),  # создать новую форму
-                        'user_name': user.username,
+                        'user_name': username,
                         'message_to_user': error_message
                     })
                 source_name = "Локальная загрузка"
@@ -93,7 +93,7 @@ def home(request):
                     print(error_message)
                     return render(request, 'home.html', {
                         'form': form,
-                        'user_name': user.username if user else None,
+                        'user_name': username,
                         'message_to_user': error_message
                     })
                 print('Скачивание видео начато')
@@ -118,7 +118,7 @@ def home(request):
                     print(error_message)
                     return render(request, 'home.html', {
                         'form': form,
-                        'user_name': user.username if user else ' ',
+                        'user_name': username,
                         'message_to_user': error_message
                     })
 
@@ -132,7 +132,7 @@ def home(request):
 
                 return render(request, 'home.html', {
                     'form': form,
-                    'user_name': user.username if user else ' ',
+                    'user_name': username,
                     'message_to_user': error_message
                 })
             else:
@@ -167,7 +167,7 @@ def home(request):
                     'form': VideoUploadForm(),
                     'algo_format_form': algo_form,
                     'message_to_user': success_message,
-                    'user_name': user.username
+                    'user_name': username
                 })
     else:
         video_form = VideoUploadForm()
@@ -176,7 +176,7 @@ def home(request):
     return render(request, 'home.html', {
         'form': video_form,
         'algo_format_form': algo_form,
-        'user_name': user.username if user else ' ',
+        'user_name': username
     })
 
 def register_user(request):
