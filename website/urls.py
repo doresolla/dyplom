@@ -18,4 +18,5 @@ urlpatterns = [
     path('favorite/add/<int:video_id>/', views.add_favorite, name='add_favorite'),
     path('favorite/remove/<int:video_id>/', views.remove_favorite, name='remove_favorite'),
     path('settings/', views.settings_view, name='settings'),
+    path('download-summary/<int:video_id>/', views.download_summary_by_video, name='download_summary_by_video'),
 ]

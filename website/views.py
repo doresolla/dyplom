@@ -159,6 +159,7 @@ def home(request):
                     audio_path='',
                     transcription_path='',
                 )
+
                 run_summary_task.delay(audio.id, algo=algo_obj.algo, format = format_obj.format, ratio= ratio)
 
                 success_message = f"Видео «{video.title}» загружено. Алгоритм: {algo_obj.algo}, формат: {format_obj.format}, ratio: {ratio}. Идёт обработка..."
@@ -167,7 +168,7 @@ def home(request):
                     'form': VideoUploadForm(),
                     'algo_format_form': algo_form,
                     'message_to_user': success_message,
-                    'user_name': username
+                    'video': video
                 })
     else:
         video_form = VideoUploadForm()
@@ -499,3 +500,24 @@ def delete_account(request):
         request.session.flush()  # Очистка сессии
         return redirect('home')
     return render(request, 'confirm_delete_account.html', {'user_name': user.username})
+
+def download_summary_by_video(request, video_id):
+    video = get_object_or_404(Video, id=video_id)
+    audio = getattr(video, 'audio', None)
+
+    if not audio:
+        return render(request, 'summary_not_ready.html', {'video': video, 'user_name': request.session.get('user_name')})
+
+    summary = Summary.objects.filter(audio=audio).first()
+
+    if not summary or not summary.file_path or not os.path.exists(summary.file_path):
+        return render(request, 'summary_not_ready.html', {'video': video, 'user_name': request.session.get('user_name')})
+
+    relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT).replace(os.path.sep, '/')
+    download_url = settings.MEDIA_URL + relative_path
+
+    return render(request, 'summary_ready.html', {
+        'video': video,
+        'download_url': download_url,
+        'user_name': request.session.get('user_name')
+    })

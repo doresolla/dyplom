@@ -53,6 +53,14 @@
     </div>
   </div>
 
+  {% if video %}
+  <div class="processing-status">
+    <p>Видео загружено: <strong>{{ video.title }}</strong></p>
+    <p>Ожидайте завершения обработки...</p>
+    <a href="{% url 'download_summary_by_video' video.id %}">Проверить готовность и скачать конспект</a>
+  </div>
+{% endif %}
+
   <style>
     .modal-overlay {
       position: fixed;

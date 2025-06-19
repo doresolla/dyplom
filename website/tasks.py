@@ -35,24 +35,20 @@ def run_summary_task(self, audio_id, algo, format, ratio):
 
     if summary_path:
         # Добавляем Summary в БД:
-        if user is not None:
-            print(f'user = {user}')
-            print(f'user.id = {user.user_id}')
+        print(f'user = {user}')
+        print(f'user.id = {user.user_id}')
 
-            Summary.objects.create(
-                audio=audio,
-                file_path=os.path.abspath(summary_path),
-                format=Format.objects.get(format=format_obj),
-                algorithm=Algo.objects.get(algo=algo_obj),
-                user=user
-            )
-            summary_dir = os.path.dirname(os.path.abspath(summary_path))
-            audio.transcription_path = os.path.join(summary_dir, f"Исходный текст.txt")
-            audio.audio_path = os.path.join(summary_dir, f'{os.path.basename(summary_dir)}.wav')
-            audio.save()
-
-        else:
-            print(f'user is {user}')
+        Summary.objects.create(
+            audio=audio,
+            file_path=os.path.abspath(summary_path),
+            format=Format.objects.get(format=format_obj),
+            algorithm=Algo.objects.get(algo=algo_obj),
+            user=user
+        )
+        summary_dir = os.path.dirname(os.path.abspath(summary_path))
+        audio.transcription_path = os.path.join(summary_dir, f"Исходный текст.txt")
+        audio.audio_path = os.path.join(summary_dir, f'{os.path.basename(summary_dir)}.wav')
+        audio.save()
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
         if user and user.email:
