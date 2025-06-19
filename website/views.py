@@ -118,7 +118,7 @@ def home(request):
                     print(error_message)
                     return render(request, 'home.html', {
                         'form': form,
-                        'user_name': user.username if user else None,
+                        'user_name': user.username if user else ' ',
                         'message_to_user': error_message
                     })
 
@@ -176,7 +176,7 @@ def home(request):
     return render(request, 'home.html', {
         'form': video_form,
         'algo_format_form': algo_format_form,
-        'user_name': user_name
+        'user_name': user.username if user else ' ',
     })
 
 def register_user(request):
@@ -197,7 +197,7 @@ def register_user(request):
 
 def login_user(request):
     error = None
-
+    user = None
     if request.method == 'POST':
         form = LoginForm(request.POST)
         if form.is_valid():
@@ -214,7 +214,10 @@ def login_user(request):
     else:
         form = LoginForm()
 
-    return render(request, 'login.html', {'form': form, 'error': error, 'user_name': user.username if user else ' ',})
+    return render(request, 'login.html', {
+        'form': form,
+        'error': error,
+        'user_name': user.username if user else ' ',})
 
 def catalog(request):
     user_id = request.session.get('user_id')
