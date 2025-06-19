@@ -71,13 +71,6 @@ class VideoUploadForm(forms.Form):
             raise forms.ValidationError("Можно указать только один источник: файл или ссылку.")
         return cleaned_data
 
-    def clean_duration(self):
-        duration = self.cleaned_data.get('duration')
-        if duration is not None:
-            if duration < 180 or duration > 10800:
-                raise forms.ValidationError("Длительность видео должна быть от 3 минут до 3 часов.")
-        return duration
-
 class SummaryReviewForm(forms.ModelForm):
     user_rating = forms.IntegerField(
         label="Оценка",

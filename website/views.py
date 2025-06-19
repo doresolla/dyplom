@@ -46,9 +46,10 @@ def home(request):
         print(f"form.is_valid: {form.is_valid()}")
         print(f"errors: {form.errors}")
 
-        if form.is_valid() and user and algo_form.is_valid():
+        if form.is_valid() and algo_form.is_valid():
             title = form.cleaned_data['title']
             file = form.cleaned_data.get('file')
+            print(f"file: {file}")
             url = form.cleaned_data.get('url')
             video_dir = os.path.join(settings.MEDIA_ROOT, 'videos')
             algo_obj = algo_form.cleaned_data['algo']
