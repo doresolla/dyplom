@@ -44,9 +44,11 @@ def home(request):
         print(f"url: {form.data.get('url')}")
         print(f"title: {form.data.get('title')}")
         print(f"form.is_valid: {form.is_valid()}")
+        print(f"algo_form.is_valid: {algo_form.is_valid()}")
         print(f"errors: {form.errors}")
 
         if form.is_valid() and algo_form.is_valid():
+            print('IF')
             title = form.cleaned_data['title']
             file = form.cleaned_data.get('file')
             print(f"file: {file}")
