@@ -6,24 +6,22 @@
 
 <h2>Личный кабинет</h2>
 
-<!-- Поиск по моим конспектам (только для summaries и favorites) -->
-<form method="get" class="search-form">
-  <div class="search-field">
+<form method="get" action="{% url 'dashboard' %}" class="search-form">
+  <div class="search-group">
     <input type="text" name="q" placeholder="Поиск по названию" value="{{ query }}">
   </div>
 
-  <div class="search-field">
+  <div class="search-group">
     <label>Дата от:</label>
     <input type="date" name="date_from" value="{{ date_from }}">
   </div>
 
-  <div class="search-field">
+  <div class="search-group">
     <label>Дата до:</label>
     <input type="date" name="date_to" value="{{ date_to }}">
   </div>
 
-  <div class="search-field">
-    <label>Тег:</label>
+  <div class="search-group">
     <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
   </div>
 
@@ -106,7 +104,7 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 <style>
-    .search-form {
+.search-form {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -115,26 +113,40 @@ document.addEventListener("DOMContentLoaded", function() {
   margin-bottom: 1.5rem;
 }
 
-.search-field {
+.search-group {
   display: flex;
   flex-direction: column;
 }
 
-.search-field label {
+.search-group label {
   font-weight: bold;
   margin-bottom: 0.2rem;
+  font-size: 0.9rem;
 }
 
-.search-field input {
+.search-group input {
   padding: 0.5rem;
-  border-radius: 4px;
+  border-radius: 5px;
   border: 1px solid #ccc;
   width: 200px;
+  font-size: 0.9rem;
 }
 
-.search-button {
-  display: flex;
-  align-items: flex-end;
+.search-button button {
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  background-color: #007bff;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-size: 0.95rem;
+  height: 44px; /* выравниваем высоту кнопки по полям */
+}
+
+.search-button button:hover {
+  background-color: #0056b3;
 }
 </style>
 {% endblock %}

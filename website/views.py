@@ -231,7 +231,9 @@ def catalog(request):
     date_to = request.GET.get('date_to')
 
     summaries = Summary.objects.select_related('audio__video', 'format', 'algorithm').prefetch_related('reviews')
-
+    favorites = Favorites(request)
+    favorite_summaries = favorites.get_summaries()
+    favorite_ids = set(favorite_summaries.values_list('id', flat=True))
     # Поиск по названию видео
     if query:
         summaries = summaries.filter(
@@ -250,7 +252,7 @@ def catalog(request):
         summary.video = summary.audio.video
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
-        summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
+        summary.is_favorite = summary.id in favorite_ids
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
