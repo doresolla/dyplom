@@ -30,6 +30,7 @@ def create_processing_request(request, video_id):
             )
             print('Заказ принят')
             processing_request_created.delay(processing_request.id)
+            print('Письмо отправлено')
 
             # после оформления можно запустить обработку
             # run_summary_task.delay(audio.id,
