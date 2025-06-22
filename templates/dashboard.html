@@ -7,28 +7,28 @@
 <h2>Личный кабинет</h2>
 
 <form method="get" action="{% url 'dashboard' %}" class="search-form">
-  <div class="search-group">
-      <label>&nbsp;</label>
-    <input type="text" name="q" placeholder="Поиск по названию" value="{{ query }}">
+  <div class="search-item">
+    <label>&nbsp;</label>
+    <input type="text" placeholder="Поиск по названию" name="q" value="{{ query }}">
   </div>
 
-  <div class="search-group">
+  <div class="search-item">
     <label>Дата от:</label>
     <input type="date" name="date_from" value="{{ date_from }}">
   </div>
 
-  <div class="search-group">
+  <div class="search-item">
     <label>Дата до:</label>
     <input type="date" name="date_to" value="{{ date_to }}">
   </div>
 
-  <div class="search-group">
-      <label>&nbsp;</label>
+  <div class="search-item">
+    <label>&nbsp;</label>
     <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
   </div>
 
-  <div class="search-button">
-      <label>&nbsp;</label>
+  <div class="search-item">
+    <label>&nbsp;</label>
     <button type="submit">🔍 Поиск</button>
   </div>
 </form>
@@ -111,23 +111,24 @@ document.addEventListener("DOMContentLoaded", function() {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  align-items: flex-end; /* вот здесь ключ! */
+  align-items: flex-end; /* все элементы выравниваются снизу */
   gap: 10px;
   margin-bottom: 1.5rem;
 }
 
-.search-group {
+.search-item {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
 }
 
-.search-group label {
+.search-item label {
   font-weight: bold;
   margin-bottom: 0.2rem;
 }
 
-.search-group input {
-  padding: 0.5rem;
+.search-item input, .search-item button {
+  padding: 0.5rem 1rem;
   border-radius: 4px;
   border: 1px solid #ccc;
   width: 200px;
@@ -135,18 +136,5 @@ document.addEventListener("DOMContentLoaded", function() {
   box-sizing: border-box;
 }
 
-.search-button {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end; /* ключ! */
-}
-
-.search-button button {
-  padding: 0.5rem 1rem;
-  height: 40px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-}
 </style>
 {% endblock %}
