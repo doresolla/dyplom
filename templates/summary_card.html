@@ -1,109 +1,167 @@
 <div class="summary-card">
-<h3>{{ summary.audio.video.title }}</h3>
-<p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
+  <div class="summary-content">
+    <h3>{{ summary.audio.video.title }}</h3>
+    <p>Формат: {{ summary.format.format }} | Алгоритм: {{ summary.algorithm.algo }}</p>
 
-<!-- Рейтинг -->
-{% with reviews=summary.reviews_list  %}
-  {% if reviews %}
-    <p>Рейтинг: {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
-  {% else %}
-    <p>Рейтинг: нет оценок</p>
-  {% endif %}
-{% endwith %}
+    <!-- Рейтинг -->
+    {% with reviews=summary.reviews_list  %}
+      {% if reviews %}
+        <p>Рейтинг: {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
+      {% else %}
+        <p>Рейтинг: нет оценок</p>
+      {% endif %}
+    {% endwith %}
 
-<!-- Транскрипция (коротко) -->
-<p><strong>Транскрипция:</strong><br>
-  {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:15 }} {% else %} Нет транскрипции {% endif %}
-</p>
+    <!-- Транскрипция (коротко) -->
+    <p><strong>Транскрипция:</strong><br>
+      {% if summary.transcript_text %} {{ summary.transcript_text|truncatewords:15 }} {% else %} Нет транскрипции {% endif %}
+    </p>
 
-<!-- Конспект (коротко) -->
-<p><strong>Конспект:</strong><br>
-  {% if summary.summary_text %} {{ summary.summary_text|truncatewords:15 }} {% else %} Нет конспекта {% endif %}
-</p>
+    <!-- Конспект (коротко) -->
+    <p><strong>Конспект:</strong><br>
+      {% if summary.summary_text %} {{ summary.summary_text|truncatewords:15 }} {% else %} Нет конспекта {% endif %}
+    </p>
 
-<!-- Кнопка "Подробнее" -->
-<button type="button" class="toggle-summary-btn" data-target="#full-summary-{{ summary.id }}">
-  Подробнее ▼
-</button>
-<div id="full-summary-{{ summary.id }}" class="full-summary" style="display: none;">
-  <p>{{ summary.summary_text }}</p>
-</div>
+    <!-- Кнопка "Подробнее" -->
+    <button type="button" class="toggle-summary-btn" data-target="#full-summary-{{ summary.id }}">
+      Подробнее ▼
+    </button>
+    <div id="full-summary-{{ summary.id }}" class="full-summary" style="display: none;">
+      <p>{{ summary.summary_text }}</p>
+    </div>
+    <div class="my-review">
+      <p><strong>Средняя оценка:</strong> {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
+        {% if summary.my_review %}
+          <div class="my-review">
+            <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
+            {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
+              <div class="review-buttons">
+                <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
+                <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="margin: 0;">
+                  {% csrf_token %}
+                  <button type="submit" class="review-btn">Удалить отзыв</button>
+                </form>
+              </div>
+            </div>
+        {% else %}
+          <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
+        {% endif %}
+    </div>
+    <p><strong>Теги:</strong>
+      {% for tag in summary.tags %}
+        <span class="tag-label">{{ tag.tag_name }}</span>
+      {% empty %}
+        Нет тегов
+      {% endfor %}
+    </p>
 
-<div class="my-review">
-  <p><strong>Средняя оценка:</strong> {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
-    {% if summary.my_review %}
-      <div class="my-review">
-        <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
-        {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
-          <div class="review-buttons">
-            <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
-            <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="margin: 0;">
-              {% csrf_token %}
-              <button type="submit" class="review-btn">Удалить отзыв</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    {% else %}
-      <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
-    {% endif %}
-</div>
-<p><strong>Теги:</strong>
-  {% for tag in summary.tags %}
-    <span class="tag-label">{{ tag.tag_name }}</span>
-  {% empty %}
-    Нет тегов
-  {% endfor %}
-</p>
-
-  <!-- Кнопка "Избранное" -->
-<div class="favorite-button">
-  {% if user %}
-  {% if not_favorites %}
-    {% if summary.is_favorite %}
-      <form method="post" action="{% url 'favorites:favorites_remove' summary.id %}">
-        {% csrf_token %}
-        <button type="submit" class="review-btn">⭐ Удалить из избранного</button>
-      </form>
-    {% else %}
-      <form method="post" action="{% url 'favorites:favorites_add' summary.id %}">
-        {% csrf_token %}
-        <button type="submit" class="review-btn">⭐ Добавить в избранное</button>
-      </form>
-    {% endif %}
-  {% endif %}
-  {% endif %}
-
-</div>
-
-  {% if summary.download_url %}
-     <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
-  {% else %}
-    <p>Конспект ещё не готов</p>
-  {% endif %}
-  <div class="delete_button">
-    {% if allow_delete %}
-    <form method="post" action="{% url 'delete_summary' summary.id %}" onsubmit="return confirm('Вы действительно хотите удалить этот конспект?');">
-      {% csrf_token %}
-      <button type="submit" class="review-btn" style="margin-top: 8px;">Удалить конспект</button>
-    </form>
-  {% endif %}
   </div>
+  <div class="summary-actions">
+     <!-- Кнопка "Избранное" -->
+  <div class="favorite-button">
+    {% if user %}
+      {% if not_favorites %}
+        {% if summary.is_favorite %}
+          <form method="post" action="{% url 'favorites:favorites_remove' summary.id %}">
+            {% csrf_token %}
+            <button type="submit" class="review-btn">⭐ Удалить из избранного</button>
+          </form>
+        {% else %}
+          <form method="post" action="{% url 'favorites:favorites_add' summary.id %}">
+            {% csrf_token %}
+            <button type="submit" class="review-btn">⭐ Добавить в избранное</button>
+          </form>
+        {% endif %}
+      {% endif %}
+    {% endif %}
+
+  </div>
+    {% if summary.download_url %}
+       <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
+    {% else %}
+      <p>Конспект ещё не готов</p>
+    {% endif %}
+    <div class="delete_button">
+      {% if allow_delete %}
+      <form method="post" action="{% url 'delete_summary' summary.id %}" onsubmit="return confirm('Вы действительно хотите удалить этот конспект?');">
+        {% csrf_token %}
+        <button type="submit" class="review-btn" style="margin-top: 8px;">Удалить конспект</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+
 
 </div>
 
 <style>
-  .tag-label {
-    display: inline-block;
-    background: #e6f0ff;
-    padding: 2px 6px;
-    margin: 0 4px 4px 0;
-    border-radius: 4px;
-    font-size: 0.85rem;
+ .summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.5rem;
 }
-  .delete_button{
-  padding: 5px;
-  }
+
+.summary-card {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 1rem;
+  background-color: white;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: scale(1.02);
+}
+
+.summary-card h3 {
+  color: #007bff;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.summary-content {
+  width: 100%;
+  text-align: left;
+}
+
+.summary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  width: 100%;
+  align-items: center;
+}
+
+.summary-actions button,
+.summary-actions a {
+  width: 200px;
+  padding: 0.5rem 1rem;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-block;
+  color: #007bff;
+  background-color: #e6f0ff;
+}
+
+.summary-actions button:hover,
+.summary-actions a:hover {
+  background-color: #007bff;
+  color: white;
+}
+
 .review-buttons {
   display: flex;
   flex-direction: column;
@@ -113,16 +171,17 @@
 }
 
 .review-buttons .review-btn {
-  width: 200px; /* фиксированная ширина */
+  width: 200px;
   padding: 0.5rem 1rem;
-  background-color: #e6f0ff;
   border: 1px solid #007bff;
   border-radius: 4px;
-  color: #007bff;
   font-weight: bold;
   font-size: 0.9rem;
-  text-decoration: none;
   text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  background-color: #e6f0ff;
+  color: #007bff;
   transition: all 0.3s ease;
 }
 
@@ -131,7 +190,13 @@
   color: white;
 }
 
-.review-buttons form {
-  margin: 0;
+.tag-label {
+  display: inline-block;
+  background: #e6f0ff;
+  padding: 2px 6px;
+  margin: 0 4px 4px 0;
+  border-radius: 4px;
+  font-size: 0.85rem;
 }
+
 </style>

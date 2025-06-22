@@ -20,7 +20,7 @@ def favorites_detail(request):
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
 
-    return render(request, 'favorites/favorites_detail.html', {
+    return render(request, 'favorites_detail.html', {
         'summaries': summaries,
         'favorites': favorites,
     })

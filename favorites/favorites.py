@@ -29,7 +29,7 @@ class Favorites:
         self.session.modified = True
 
     def get_summaries(self):
-        return Summary.objects.filter(note_id__in=self.fav)
+        return Summary.objects.filter(id__in=self.fav)
 
     def __len__(self):
         return len(self.fav)
