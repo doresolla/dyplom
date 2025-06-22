@@ -5,12 +5,12 @@ from .favorites import Favorites
 def favorites_add(request, summary_id):
     favorites = Favorites(request)
     favorites.add(summary_id)
-    return redirect('favorites:favorites_detail')
+    return redirect('/dashboard/?section=favorites')
 
 def favorites_remove(request, summary_id):
     favorites = Favorites(request)
     favorites.remove(summary_id)
-    return redirect('favorites:favorites_detail')
+    return redirect('/dashboard/?section=favorites')
 
 def favorites_detail(request):
     favorites = Favorites(request)
