@@ -60,19 +60,19 @@
      <!-- Кнопка "Избранное" -->
   <div class="favorite-button">
     {% if user %}
-      {% if not_favorites %}
         {% if summary.is_favorite %}
           <form method="post" action="{% url 'favorites:favorites_remove' summary.id %}">
             {% csrf_token %}
             <button type="submit" class="review-btn">⭐ Удалить из избранного</button>
           </form>
         {% else %}
-          <form method="post" action="{% url 'favorites:favorites_add' summary.id %}">
-            {% csrf_token %}
-            <button type="submit" class="review-btn">⭐ Добавить в избранное</button>
-          </form>
+          {% if not_favorites %}
+            <form method="post" action="{% url 'favorites:favorites_add' summary.id %}">
+              {% csrf_token %}
+              <button type="submit" class="review-btn">⭐ Добавить в избранное</button>
+            </form>
+          {% endif %}
         {% endif %}
-      {% endif %}
     {% endif %}
 
   </div>
