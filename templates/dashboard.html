@@ -77,11 +77,13 @@
 {% endif %}
 
 <!-- Секция Избранное -->
-<a href="{% url 'favorites:favorites_detail' %}">Мои избранные конспекты</a>
+{%if section == 'favorites'%}
+<a href="{% url 'favorites_detail' %}">Мои избранные конспекты</a>
     <h3>Мои избранные конспекты</h3>
     <div class="summary-grid">
-        {% include 'favorites/favorites_detail.html' %}
+        {% include 'favorites_detail.html' %}
     </div>
+{%endif%}
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
