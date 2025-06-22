@@ -7,10 +7,9 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Avg
-from django.contrib.admin.views.decorators import staff_member_required
-from .mainAction import generate_summary
 
-from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm
+
+from .forms import VideoTagForm, SummaryReviewForm, UserRegistrationForm, LoginForm, VideoUploadForm,SummaryAlgoFormatForm, UserSettingsForm
 from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, Tag, VideoTag, Algo
 from .tasks import run_summary_task
 
@@ -392,14 +391,20 @@ def settings_view(request):
         action = request.POST.get('action')
 
         if action == 'save_algo':
-            print(request.POST)
-            preferred_algo_value = request.POST.get('algo')
-            print(f'preferred_algo_value={preferred_algo_value}')
-            if preferred_algo_value:
-                preferred_algo_id = int(preferred_algo_value)
-                print(f'AFTER preferred_algo_id={preferred_algo_id}')
-                user.preferred_algo_id = preferred_algo_id
+            form = UserSettingsForm(request.POST)
+            if form.is_valid():
+                user.preferred_algo_id = form.cleaned_data['algo'].id
+                print(f'user.preferred_algo_id={user.preferred_algo_id}')
                 user.save()
+                return redirect('settings')
+            # print(request.POST)
+            # preferred_algo_value = request.POST.get('algo')
+            # print(f'preferred_algo_value={preferred_algo_value}')
+            # if preferred_algo_value:
+            #     preferred_algo_id = int(preferred_algo_value)
+            #     print(f'AFTER preferred_algo_id={preferred_algo_id}')
+            #     user.preferred_algo_id = preferred_algo_id
+            #     user.save()
 
         elif action == 'save_theme':
             dark_theme = 'dark_theme' in request.POST
@@ -418,11 +423,14 @@ def settings_view(request):
 
     # Получаем список алгоритмов
     algos = Algo.objects.all()
+    initial_data = {}
+    if user.preferred_algo_id:
+        initial_data['algo'] = user.preferred_algo_id
+    form = UserSettingsForm(initial=initial_data)
 
     return render(request, 'settings.html', {
         'algos': algos,
         'preferred_algo_id': preferred_algo_id,
-        'dark_theme': dark_theme,
         'user_name': user.username
     })
 
