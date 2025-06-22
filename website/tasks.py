@@ -45,7 +45,7 @@ def run_summary_task(self, audio_id, algo, format, ratio):
         audio.save()
 
         print(f"[TASK] Summary saved to DB for Audio ID {audio_id}")
-        if user and user.email:
+        if user and user.email and (user.user_id != 2):
             try:
                 send_mail(
                     subject="Конспект готов",

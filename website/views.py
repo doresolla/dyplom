@@ -130,7 +130,7 @@ def home(request):
                 })
             else:
                 video = Video.objects.create(
-                    author=user,
+                    author=user if user else User.objects.filter(pk=2).first(),
                     title=title,
                     video_path=video_path,
                     url=url or '',
