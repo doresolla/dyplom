@@ -28,7 +28,7 @@ class Favorites:
         self.session[settings.FAVORITES_SESSION_ID] = []
         self.session.modified = True
 
-    def get_notes(self):
+    def get_summaries(self):
         return Summary.objects.filter(note_id__in=self.fav)
 
     def __len__(self):
