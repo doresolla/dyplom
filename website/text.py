@@ -205,8 +205,8 @@ class Text:
                             sentenceValue[sentence] = self.freqTable[word]
                 allFreq += sentenceValue[sentence]
         except Exception as e:
-            print(e)
             print(repr(e))
+            print(f'Ошибка во время sent_summary: {e}')
 
         average = int(allFreq / len(sentenceValue))
 

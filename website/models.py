@@ -43,6 +43,16 @@ class Video(models.Model):
     def get_status(self):
         return 'Обработан' if self.status else 'В обработке'
 
+    def delete(self, *args, **kwargs):
+        # Удаляем файл с диска
+        if self.video_path and os.path.exists(self.video_path):
+            os.remove(self.video_path)
+        # Удаляем превью
+        thumbnail_path = self.video_path.rsplit('.', 1)[0] + '_thumb.jpg'
+        if os.path.exists(thumbnail_path):
+            os.remove(thumbnail_path)
+        super().delete(*args, **kwargs)
+
 
 class VideoOwnership(models.Model):
     user = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True)
@@ -95,7 +105,7 @@ class Algo(models.Model):
         self.delete()
 
 class Summary(models.Model):
-    audio = models.ForeignKey(Audio, on_delete=models.CASCADE, related_name='summaries')
+    audio = models.ForeignKey(Audio, on_delete=models.SET_NULL, related_name='summaries')
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='summaries')
     file_path = models.CharField(max_length=500)  # путь к файлу с конспектом
     created_at = models.DateField(auto_now_add=True)
@@ -105,7 +115,6 @@ class Summary(models.Model):
 
     def get_file_text(self):
         try:
-            print(f'self.file_path={self.file_path}')
             txt_filename = os.path.splitext(self.file_path)[0] + ".txt"
             with open(txt_filename, 'r', encoding='utf-8') as f:
                 return f.read()
