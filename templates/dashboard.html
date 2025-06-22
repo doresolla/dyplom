@@ -79,7 +79,7 @@
 <!-- Секция Избранное -->
 {%if section == 'favorites'%}
     <h3>Мои избранные конспекты</h3>
-    {% include 'favorites_detail.html' %}
+    {% include 'favorites_detail.html' with user_name=user_name %}
 {%endif%}
 
 <script>
