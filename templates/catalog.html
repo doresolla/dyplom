@@ -3,23 +3,35 @@
 {% block title %}Каталог конспектов{% endblock %}
 
 {% block content %}
-<form method="get" action="{% url 'catalog' %}" class="search-form">
-    <input type="text" name="q" placeholder="Поиск по названию видео" value="{{ query }}">
+<form method="get" class="search-form">
+  <div class="search-field">
+    <input type="text" name="q" placeholder="Поиск по названию" value="{{ query }}">
+  </div>
 
+  <div class="search-field">
     <label>Дата от:</label>
     <input type="date" name="date_from" value="{{ date_from }}">
+  </div>
 
+  <div class="search-field">
     <label>Дата до:</label>
     <input type="date" name="date_to" value="{{ date_to }}">
+  </div>
+
+  <div class="search-field">
     <label>Тег:</label>
     <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
+  </div>
+
+  <div class="search-button">
     <button type="submit">🔍 Поиск</button>
+  </div>
 </form>
   <h2>Каталог конспектов</h2>
 
   <div class="summary-grid">
     {% for summary in summaries %}
-      {% include 'summary_card.html' with summary=summary user=user %}
+      {% include 'summary_card.html' with summary=summary allow_delete=False  %}
     {% endfor %}
   </div>
 
@@ -40,4 +52,36 @@
       });
     });
   </script>
+<style>
+    .search-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.search-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.search-field label {
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+}
+
+.search-field input {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  width: 200px;
+}
+
+.search-button {
+  display: flex;
+  align-items: flex-end;
+}
+</style>
 {% endblock %}

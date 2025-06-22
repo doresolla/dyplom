@@ -72,11 +72,20 @@
   {% endfor %}
 </p>
 
-{% if summary.download_url %}
-   <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
-{% else %}
-  <p>Конспект ещё не готов</p>
-{% endif %}
+  {% if summary.download_url %}
+     <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
+  {% else %}
+    <p>Конспект ещё не готов</p>
+  {% endif %}
+  <div class="delete_button">
+    {% if allow_delete %}
+    <form method="post" action="{% url 'delete_summary' summary.id %}" onsubmit="return confirm('Вы действительно хотите удалить этот конспект?');">
+      {% csrf_token %}
+      <button type="submit" class="review-btn" style="margin-top: 8px;">Удалить конспект</button>
+    </form>
+  {% endif %}
+  </div>
+
 </div>
 
 <style>
@@ -88,4 +97,7 @@
     border-radius: 4px;
     font-size: 0.85rem;
 }
+  .delete_button{
+  padding: 5px;
+  }
 </style>
