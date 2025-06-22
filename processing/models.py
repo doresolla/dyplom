@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 from website.models import User, Video, Audio, Summary
 
@@ -13,4 +14,4 @@ class ProcessingRequest(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"Запрос №{self.id} от {self.user.username}"
+        return f"Р—Р°РїСЂРѕСЃ в„–{self.id} РѕС‚ {self.user.username}"

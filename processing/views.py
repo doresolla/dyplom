@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ProcessingRequestForm
 from .models import ProcessingRequest
@@ -18,7 +19,7 @@ def create_processing_request(request, video_id):
             processing_request.audio = audio
             processing_request.save()
 
-            # Здесь можно запустить обработку
+            # Р—РґРµСЃСЊ РјРѕР¶РЅРѕ Р·Р°РїСѓСЃС‚РёС‚СЊ РѕР±СЂР°Р±РѕС‚РєСѓ
             # run_summary_task.delay(audio.id, ...)
 
             return render(request, 'success.html', {'request_obj': processing_request})
