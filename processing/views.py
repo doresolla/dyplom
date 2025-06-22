@@ -4,7 +4,8 @@ from .forms import ProcessingRequestForm
 from .models import ProcessingRequest
 from website.models import Video, Audio, Summary, User
 from website.forms import SummaryAlgoFormatForm, VideoUploadForm
-from website.tasks import run_summary_task
+# from website.tasks import run_summary_task
+from .tasks import processing_request_created
 
 def create_processing_request(request, video_id):
     user = User.objects.get(pk=request.session.get('user_id'))
@@ -28,11 +29,13 @@ def create_processing_request(request, video_id):
                 ratio=algo_form.cleaned_data['ratio']
             )
             print('Заказ принят')
+            processing_request_created.delay(processing_request.id)
+
             # после оформления можно запустить обработку
-            run_summary_task.delay(audio.id,
-                                   algo=algo_form.cleaned_data['algo'].algo,
-                                   format = algo_form.cleaned_data['format'].format,
-                                   ratio=algo_form.cleaned_data.get('ratio'))
+            # run_summary_task.delay(audio.id,
+            #                        algo=algo_form.cleaned_data['algo'].algo,
+            #                        format = algo_form.cleaned_data['format'].format,
+            #                        ratio=algo_form.cleaned_data.get('ratio'))
             return render(request, 'success.html',
                           {'request_obj': processing_request, 'user_name': user.username})
 
