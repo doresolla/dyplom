@@ -385,6 +385,7 @@ def settings_view(request):
 
     # Пример — preferred_algo можно хранить в User или в отдельной модели UserSettings
     preferred_algo_id = user.preferred_algo_id if hasattr(user, 'preferred_algo_id') else None
+    print(f'BEFORE preferred_algo_id={preferred_algo_id}')
     dark_theme = request.session.get('dark_theme', False)
 
     if request.method == 'POST':
@@ -392,8 +393,10 @@ def settings_view(request):
 
         if action == 'save_algo':
             preferred_algo_value = request.POST.get('preferred_algo')
+            print(f'preferred_algo_value={preferred_algo_value}')
             if preferred_algo_value:
                 preferred_algo_id = int(preferred_algo_value)
+                print(f'AFTER preferred_algo_id={preferred_algo_id}')
                 user.preferred_algo_id = preferred_algo_id
                 user.save()
 
