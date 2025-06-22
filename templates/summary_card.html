@@ -36,12 +36,14 @@
         <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
         {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
         <div class="review-buttons">
-          <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
+          <div class="review-buttons">
+            <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
 
-          <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="review-btn">Удалить отзыв</button>
-          </form>
+            <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="review-btn">Удалить отзыв</button>
+            </form>
+          </div>
         </div>
       </div>
     {% else %}
@@ -104,26 +106,33 @@
   .delete_button{
   padding: 5px;
   }
-  .review-btn {
-  display: inline-block;
-  padding: 0.4rem 1rem;
-  background-color: #f0f8ff;
+  .review-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.review-buttons .review-btn {
+  padding: 0.5rem 1.2rem;
+  background-color: #e6f0ff;
   border: 1px solid #007bff;
   border-radius: 4px;
   color: #007bff;
-  font-size: 0.9rem;
   font-weight: bold;
+  font-size: 0.9rem;
   text-decoration: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+  text-align: center;
+  display: inline-block;
+  min-width: 140px;
+  transition: all 0.3s ease;
 }
 
-.review-btn:hover {
+.review-buttons .review-btn:hover {
   background-color: #007bff;
   color: white;
 }
-  form .review-btn {
-  width: auto;
-  display: inline-block;
+
+.review-buttons form {
+  margin: 0;
 }
 </style>

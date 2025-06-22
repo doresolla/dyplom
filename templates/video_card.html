@@ -9,10 +9,12 @@
       {% for tag in video.tags %}
         <span class="tag-label">{{ tag.tag_name }}</span>
       {% empty %}
-        <span>—</span>
+        <span>Нет тегов</span>
       {% endfor %}
     </p>
-    <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>
+    <div class="tag-buttons">
+      <a href="{% url 'edit_video_tags' video.id %}" class="tag-edit-btn">Редактировать теги</a>
+    </div>
   </div>
   {% if video.download_url %}
     <a href="{{ video.download_url }}" download class="download-btn">🎬 Скачать видео</a>
@@ -35,5 +37,37 @@
   .video-tags {
     margin-top: 0.8rem;
     margin-bottom: 0.5rem;
+  }
+  .tag-label {
+  display: inline-block;
+  background: #e6f0ff;
+  padding: 2px 6px;
+  margin: 0 4px 4px 0;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.tag-buttons {
+  margin-top: 0.5rem;
+}
+
+.tag-edit-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background-color: #e6f0ff;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  color: #007bff;
+  font-weight: bold;
+  font-size: 0.9rem;
+  text-decoration: none;
+  text-align: center;
+  min-width: 140px;
+  transition: all 0.3s ease;
+}
+
+.tag-edit-btn:hover {
+  background-color: #007bff;
+  color: white;
 }
 </style>
