@@ -392,7 +392,7 @@ def settings_view(request):
         action = request.POST.get('action')
 
         if action == 'save_algo':
-            preferred_algo_value = request.POST.get('preferred_algo')
+            preferred_algo_value = request.POST.get('algo')
             print(f'preferred_algo_value={preferred_algo_value}')
             if preferred_algo_value:
                 preferred_algo_id = int(preferred_algo_value)
