@@ -310,6 +310,7 @@ def dashboard(request):
                                                                                                        'algorithm').prefetch_related('reviews')
     favorites = Favorites(request)
     favorite_summaries = favorites.get_summaries()
+    favorite_ids = set(favorite_summaries.values_list('id', flat=True))
 
     if query:
         user_summaries = user_summaries.filter(audio__video__title__icontains=query)
@@ -339,7 +340,7 @@ def dashboard(request):
         summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
-        summary.is_favorite = VideoOwnership.objects.filter(user=user, video=summary.video).exists() if user else False
+        summary.is_favorite = summary.id in favorite_ids
         summary.reviews_list = summary.reviews.all()
         summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
