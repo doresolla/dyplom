@@ -431,7 +431,8 @@ def settings_view(request):
     return render(request, 'settings.html', {
         'algos': algos,
         'preferred_algo_id': preferred_algo_id,
-        'user_name': user.username
+        'user_name': user.username,
+        'form': form,
     })
 
 @require_POST

@@ -53,8 +53,10 @@ class SummaryAlgoFormatForm(forms.Form):
 class UserSettingsForm(forms.Form):
     algo = forms.ModelChoiceField(
         queryset=Algo.objects.all(),
-        label='Предпочтительный алгоритм'
+        label='Предпочтительный алгоритм',
+        empty_label="Выберите алгоритм"
     )
+
 class VideoUploadForm(forms.Form):
     title = forms.CharField(max_length=255, required=False, label='Название видео')
     file = forms.FileField(required=False, label='Выбрать видеофайл')
