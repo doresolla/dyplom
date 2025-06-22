@@ -13,8 +13,8 @@
     {% csrf_token %}
 
     <p>
-      {{ form.file.label_tag }}<br>
       {{ form.file }}
+      <span id="selected-filename" class="filename-label"></span>
     </p>
 
     <p>
@@ -85,6 +85,30 @@
       from { opacity: 0; transform: translateY(-20px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    input[type="file"] {
+      display: none;
+    }
+
+    .custom-file-upload {
+      border: 1px solid #ccc;
+      display: inline-block;
+      padding: 8px 16px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: white;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+
+    .custom-file-upload:hover {
+      background-color: #0056b3;
+    }
+
+    .filename-label {
+      margin-left: 10px;
+      font-weight: bold;
+      color: #333;
+    }
   </style>
 
   <script>
@@ -93,6 +117,17 @@
       modal.style.display = "flex";
     }
 
+    document.addEventListener("DOMContentLoaded", function() {
+      const fileInput = document.getElementById("id_file");
+      const fileLabel = document.getElementById("selected-filename");
+      fileInput.addEventListener("change", function() {
+        if (fileInput.files.length > 0) {
+          fileLabel.innerText = fileInput.files[0].name;
+        } else {
+          fileLabel.innerText = "";
+        }
+      });
+    });
     document.addEventListener("DOMContentLoaded", function() {
       const fileInput = document.getElementById("id_file");
       const urlInput = document.getElementById("id_url");
@@ -124,11 +159,6 @@
 
       // События
       fileInput.addEventListener("change", toggleTitleField);
-      fileInput.addEventListener("change", function() {
-        if (fileInput.files.length > 0) {
-          fileLabel.innerText = fileInput.files[0].name;
-        }
-      });
       urlInput.addEventListener("input", toggleTitleField);
 
       algoSelect.addEventListener("change", toggleRatioField);
