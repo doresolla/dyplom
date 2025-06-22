@@ -21,7 +21,7 @@
 
   <div class="search-group">
     <label>&nbsp;</label>
-    <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
+    <input type="text" name="tag" placeholder="Поиск по названию" value="{{ tag }}">
   </div>
 
   <div class="search-button">
@@ -55,49 +55,38 @@
     });
   </script>
 <style>
-  .search-form {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
+    .search-form {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1.5rem;
+    }
 
-.search-group {
+.search-field {
   display: flex;
   flex-direction: column;
 }
 
-.search-group label {
+.search-field label {
   font-weight: bold;
   margin-bottom: 0.2rem;
-  font-size: 0.9rem;
 }
 
-.search-group input {
+.search-field input {
   padding: 0.5rem;
-  border-radius: 5px;
+  border-radius: 4px;
   border: 1px solid #ccc;
   width: 200px;
-  font-size: 0.9rem;
+  height:40px;
 }
 
 .search-button {
-  padding: 0.5rem 1rem;
-  font-weight: bold;
-  background-color: #007bff;
-  border: none;
-  border-radius: 5px;
-  color: white;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  font-size: 0.95rem;
-  width: 200px;
-}
+  display: flex;
+  align-items: center;
+  height:40px;
 
-.search-button:hover {
-  background-color: #0056b3;
 }
 </style>
 {% endblock %}
