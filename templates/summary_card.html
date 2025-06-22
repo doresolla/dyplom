@@ -35,11 +35,9 @@
       <div class="my-review">
         <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
         {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
-        <div class="review-buttons">
           <div class="review-buttons">
             <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
-
-            <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
+            <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="margin: 0;">
               {% csrf_token %}
               <button type="submit" class="review-btn">Удалить отзыв</button>
             </form>
@@ -106,14 +104,17 @@
   .delete_button{
   padding: 5px;
   }
-  .review-buttons {
+.review-buttons {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   margin-top: 0.5rem;
+  align-items: center;
 }
 
 .review-buttons .review-btn {
-  padding: 0.5rem 1.2rem;
+  width: 200px; /* фиксированная ширина */
+  padding: 0.5rem 1rem;
   background-color: #e6f0ff;
   border: 1px solid #007bff;
   border-radius: 4px;
@@ -122,8 +123,6 @@
   font-size: 0.9rem;
   text-decoration: none;
   text-align: center;
-  display: inline-block;
-  min-width: 140px;
   transition: all 0.3s ease;
 }
 

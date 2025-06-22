@@ -78,11 +78,8 @@
 
 <!-- Секция Избранное -->
 {%if section == 'favorites'%}
-<a href="{% url 'favorites_detail' %}">Мои избранные конспекты</a>
     <h3>Мои избранные конспекты</h3>
-    <div class="summary-grid">
-        {% include 'favorites_detail.html' %}
-    </div>
+    {% include 'favorites_detail.html' %}
 {%endif%}
 
 <script>
