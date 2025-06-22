@@ -29,7 +29,34 @@
   <p>{{ summary.summary_text }}</p>
 </div>
 
-<!-- Кнопка "Избранное" -->
+<div class="my-review">
+  <p><strong>Средняя оценка:</strong> {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
+    {% if summary.my_review %}
+      <div class="my-review">
+        <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
+        {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
+        <div class="review-buttons">
+        <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
+
+        <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="review-btn">Удалить отзыв</button>
+        </form>
+      </div>
+      </div>
+    {% else %}
+      <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
+    {% endif %}
+</div>
+<p><strong>Теги:</strong>
+  {% for tag in summary.tags %}
+    <span class="tag-label">{{ tag.tag_name }}</span>
+  {% empty %}
+    Нет тегов
+  {% endfor %}
+</p>
+
+  <!-- Кнопка "Избранное" -->
 <div class="favorite-button">
   {% if user %}
     {% if summary.is_favorite %}
@@ -45,32 +72,6 @@
     {% endif %}
   {% endif %}
 </div>
-
-<div class="my-review">
-  <p><strong>Средняя оценка:</strong> {{ summary.avg_rating|floatformat:1 }}/5 ⭐</p>
-    {% if summary.my_review %}
-      <div class="my-review">
-        <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
-        {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
-        <div class="review-buttons">
-          <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
-          <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="review-btn">Удалить отзыв</button>
-          </form>
-        </div>
-      </div>
-    {% else %}
-      <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>
-    {% endif %}
-</div>
-<p><strong>Теги:</strong>
-  {% for tag in summary.tags %}
-    <span class="tag-label">{{ tag.tag_name }}</span>
-  {% empty %}
-    Нет тегов
-  {% endfor %}
-</p>
 
   {% if summary.download_url %}
      <a href="{{ request.scheme }}://{{ request.get_host }}{{ summary.download_url }}" class="download-btn" download>📄 Скачать конспект</a>
@@ -100,4 +101,22 @@
   .delete_button{
   padding: 5px;
   }
+  .review-btn {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background-color: #f0f8ff;
+  border: 1px solid #007bff;
+  border-radius: 4px;
+  color: #007bff;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.review-btn:hover {
+  background-color: #007bff;
+  color: white;
+}
 </style>
