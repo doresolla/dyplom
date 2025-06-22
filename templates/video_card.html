@@ -3,6 +3,7 @@
   <p><strong>Источник:</strong> {{ video.source_name }}</p>
   <p><strong>Длительность:</strong> {{ video.duration }} сек.</p>
   <p><strong>Дата загрузки:</strong> {{ video.uploaded_at|date:"d E Y" }}</p>
+  <a href="{% url 'processing:create' video.id %}">Оформить обработку</a>
 
   <div class="video-tags">
     <p><strong>Теги:</strong>
@@ -16,6 +17,7 @@
       <a href="{% url 'edit_video_tags' video.id %}" class="tag-edit-btn">Редактировать теги</a>
     </div>
   </div>
+
   {% if video.download_url %}
     <a href="{{ video.download_url }}" download class="download-btn">🎬 Скачать видео</a>
   {% endif %}
@@ -24,6 +26,8 @@
     {% csrf_token %}
     <button type="submit">Удалить</button>
   </form>
+
+
 </div>
 <style>
   .tag-label {

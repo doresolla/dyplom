@@ -39,30 +39,7 @@
     <div class="summary-grid">
         {% for video in user_videos %}
             {% include 'video_card.html' with video=video %}
-<!--            <div class="summary-card">-->
-<!--                <h3>{{ video.title }}</h3>-->
-<!--                <p>Длительность: {{ video.duration }} сек.</p>-->
-<!--                <p>Источник: {{ video.source_name }}</p>-->
-<!--                <p>Дата загрузки: {{ video.uploaded_at|date:"d E Y" }}</p>-->
-<!--                {% if summary.audio.video.video_path %}-->
-<!--                  <a href="{{ MEDIA_URL }}{{ summary.audio.video.video_path|cut:MEDIA_ROOT|cut:'\\' }}" download class="download-btn">-->
-<!--                    Скачать видео-->
-<!--                  </a>-->
-<!--                {% endif %}-->
-<!--                <form method="post" action="{% url 'delete_video' video.id %}" onsubmit="return confirm('Вы действительно хотите удалить это видео?');">-->
-<!--                    {% csrf_token %}-->
-<!--                    <button type="submit">Удалить видео</button>-->
-<!--                </form>-->
-<!--                <p><strong>Теги:</strong>-->
-<!--                  {% for tag in video.tags %}-->
-<!--                    <span class="tag-label">{{ tag.tag_name }}</span>-->
-<!--                  {% empty %}-->
-<!--                    <span class="tag-label">—</span>-->
-<!--                  {% endfor %}-->
-<!--                    <a href="{% url 'edit_video_tags' video.id %}" class="review-btn">Редактировать теги</a>-->
-<!--                </p>-->
 
-<!--            </div>-->
         {% endfor %}
     </div>
 {% endif %}
