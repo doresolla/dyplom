@@ -109,7 +109,7 @@ class Format(models.Model):
 
 
 class Summary(models.Model):
-    audio = models.ForeignKey(Audio, on_delete=models.SET_NULL, related_name='summaries')
+    audio = models.ForeignKey(Audio, on_delete=models.SET_NULL, null=True,blank=True, related_name='summaries')
     user = models.ForeignKey('User', on_delete=models.CASCADE, related_name='summaries')
     file_path = models.CharField(max_length=500)  # путь к файлу с конспектом
     created_at = models.DateField(auto_now_add=True)
@@ -146,7 +146,7 @@ class Summary(models.Model):
 
 
 class SummaryReview(models.Model):
-    summary = models.ForeignKey(Summary, on_delete=models.CASCADE, related_name='reviews')
+    summary = models.ForeignKey(Summary, on_delete=models.CASCADE,  related_name='reviews')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     text = models.TextField(blank=True)
