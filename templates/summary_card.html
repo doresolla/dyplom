@@ -63,14 +63,14 @@
   {% if user %}
   {% if not_favorites %}
     {% if summary.is_favorite %}
-      <form method="post" action="{% url 'remove_favorite' summary.audio.video.id %}">
+      <form method="post" action="{% url 'favorites:favorites_remove' summary.id %}">
         {% csrf_token %}
-        <button type="submit">⭐ Удалить из избранного</button>
+        <button type="submit" class="review-btn">⭐ Удалить из избранного</button>
       </form>
     {% else %}
-      <form method="post" action="{% url 'add_favorite' summary.audio.video.id %}">
+      <form method="post" action="{% url 'favorites:favorites_add' summary.id %}">
         {% csrf_token %}
-        <button type="submit">⭐ Добавить в избранное</button>
+        <button type="submit" class="review-btn">⭐ Добавить в избранное</button>
       </form>
     {% endif %}
   {% endif %}

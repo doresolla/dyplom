@@ -37,7 +37,7 @@
     <h3>Ваши видео</h3>
     <div class="summary-grid">
         {% for video in user_videos %}
-        {% include 'video_card.html' with video=video %}
+            {% include 'video_card.html' with video=video %}
 <!--            <div class="summary-card">-->
 <!--                <h3>{{ video.title }}</h3>-->
 <!--                <p>Длительность: {{ video.duration }} сек.</p>-->
@@ -77,12 +77,10 @@
 {% endif %}
 
 <!-- Секция Избранное -->
-{% if section == 'favorites' %}
+<a href="{% url 'favorites:favorites_detail' %}">Мои избранные конспекты</a>
     <h3>Мои избранные конспекты</h3>
     <div class="summary-grid">
-        {% for summary in favorite_summaries %}
-            {% include 'summary_card.html' with summary=summary user=user not_favorites=False %}
-        {% endfor %}
+        {% include 'favorites/favorites_detail.html' %}
     </div>
 {% endif %}
 

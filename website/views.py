@@ -307,30 +307,23 @@ def dashboard(request):
     user_videos = Video.objects.filter(author=user)
     user_audios = Audio.objects.filter(video__in=user_videos)
     user_summaries = Summary.objects.filter(audio__in=user_audios).select_related('audio__video', 'format',
-                                                                                  'algorithm').prefetch_related('reviews')
-    favorite_video_ids = VideoOwnership.objects.filter(user=user).values_list('video_id', flat=True)
-    favorite_summaries = Summary.objects.filter(audio__video__id__in=favorite_video_ids).select_related('audio__video',
-                                                                                                        'format',
-                                                                                                        'algorithm').prefetch_related('reviews')
+                                                                                                       'algorithm').prefetch_related('reviews')
     if query:
         user_summaries = user_summaries.filter(audio__video__title__icontains=query)
         user_videos = user_videos(title__icontains=query)
-        favorite_summaries = favorite_summaries.filter(audio__video__title__icontains=query)
+
     if date_from and date_to:
         user_summaries = user_summaries.filter(created_at__range=[date_from, date_to])
-        favorite_summaries = favorite_summaries.filter(created_at__range=[date_from, date_to])
         user_videos = user_videos(uploaded_at__range=[date_from, date_to])
     elif date_from:
         user_summaries = user_summaries.filter(created_at__gte=date_from)
-        favorite_summaries = favorite_summaries.filter(created_at__gte=date_from)
+
         user_videos = user_videos(created_at__gte=date_from)
     elif date_to:
         user_summaries = user_summaries.filter(created_at__lte=date_to)
-        favorite_summaries = favorite_summaries.filter(created_at__lte=date_to)
         user_videos = user_videos(created_at__lte=date_to)
     if tag_query:
         user_summaries = user_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
-        favorite_summaries = favorite_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
         user_videos = user_videos.filter(videotag__tag__tag_name__icontains=tag_query)
 
     # Обогащаем объекты для шаблона
@@ -353,27 +346,10 @@ def dashboard(request):
         else:
             summary.download_url = None
 
-    for summary in favorite_summaries:
-        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
-        summary.transcript_text = summary.audio.get_transcription_text()
-        summary.summary_text = summary.get_file_text()
-        summary.reviews_list = summary.reviews.all()
-        summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
-        avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
-        summary.avg_rating = avg_rating if avg_rating else 0
-
-        # формируем download_url
-        if summary.file_path:
-            relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
-            relative_path = relative_path.replace(os.path.sep, '/')
-            summary.download_url = settings.MEDIA_URL + relative_path
-        else:
-            summary.download_url = None
 
     return render(request, 'dashboard.html', {
         'user_videos': user_videos,
         'user_summaries': user_summaries,
-        'favorite_summaries': favorite_summaries,
         'query': query,
         'section': section,
         'user_name': user.username

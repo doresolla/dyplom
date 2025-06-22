@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2>Ваше избранное</h2>
+
+{% if summaries %}
+  <div class="summary-grid">
+    {% for summary in summaries %}
+      {% include 'summary_card.html' with summary=summary %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p>Список избранного пуст.</p>
+{% endif %}
+
+{% endblock %}
