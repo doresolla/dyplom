@@ -1,0 +1,5 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Спасибо! Ваш запрос №{{ request_obj.id }} оформлен.</h1>
+<p>Дата создания: {{ request_obj.requested_at|date:"d-m-Y" }}</p>
+{% endblock %}

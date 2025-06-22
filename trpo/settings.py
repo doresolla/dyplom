@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'website',
     'favorites',
+    'processing',
 ]
 
 FAVORITES_SESSION_ID = 'favorites'

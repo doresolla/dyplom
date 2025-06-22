@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h1>Оформление запроса на обработку видео: {{ video.title }}</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Отправить запрос</button>
+</form>
+
+<a href="/">Вернуться на главную</a>
+{% endblock %}
