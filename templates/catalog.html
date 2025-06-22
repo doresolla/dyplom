@@ -5,7 +5,8 @@
 {% block content %}
 <form method="get" action="{% url 'dashboard' %}" class="search-form">
   <div class="search-group">
-    <input type="text" name="q" placeholder="Поиск по названию" value="{{ query }}">
+    <label>&nbsp;</label>
+    <input type="text" placeholder="Поиск по названию" name="q" value="{{ query }}">
   </div>
 
   <div class="search-group">
@@ -19,10 +20,12 @@
   </div>
 
   <div class="search-group">
+    <label>&nbsp;</label>
     <input type="text" name="tag" placeholder="Поиск по тегу" value="{{ tag }}">
   </div>
 
   <div class="search-button">
+    <label>&nbsp;</label>
     <button type="submit">🔍 Поиск</button>
   </div>
 </form>
