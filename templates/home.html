@@ -12,10 +12,13 @@
   <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="showLoadingModal()">
     {% csrf_token %}
 
-    <p>
-      {{ form.file }}
-      <span id="selected-filename" class="filename-label"></span>
-    </p>
+    <label for="id_file" class="custom-file-upload">
+      📂 Загрузить видеофайл
+    </label>
+
+    {{ form.file }}
+
+    <span id="selected-filename"></span>
 
     <p>
       {{ form.url.label_tag }}<br>
@@ -108,6 +111,9 @@
       margin-left: 10px;
       font-weight: bold;
       color: #333;
+    }
+    input[type="file"] {
+      display: none;
     }
   </style>
 
