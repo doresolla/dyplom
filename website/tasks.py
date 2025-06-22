@@ -12,10 +12,6 @@ def run_summary_task(self, audio_id, algo, format, ratio):
     algo_obj = algo
     format_obj = format
     user = video.author
-    print('---------------------------------------------------')
-    print(f'user = {user}')
-    print(f'user.id = {user.user_id}')
-    print('---------------------------------------------------')
 
     print(f"[TASK] Start generating summary for Video ID {video.id}")
     print(f'ALGORITHM = {algo_obj}')
@@ -35,8 +31,6 @@ def run_summary_task(self, audio_id, algo, format, ratio):
 
     if summary_path:
         # Добавляем Summary в БД:
-        print(f'user = {user}')
-        print(f'user.id = {user.user_id}')
 
         Summary.objects.create(
             audio=audio,
