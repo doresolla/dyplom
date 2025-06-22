@@ -9,6 +9,7 @@
 <h3>Предпочтительный алгоритм суммаризации</h3>
 <form method="post" action="{% url 'settings' %}">
     {% csrf_token %}
+    <input type="hidden" name="action" value="save_algo">
     {{ form.as_p }}
     <button type="submit">Сохранить</button>
 </form>

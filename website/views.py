@@ -392,6 +392,7 @@ def settings_view(request):
 
         if action == 'save_algo':
             form = UserSettingsForm(request.POST)
+            print(f'form.is_valid() ={form.is_valid()}')
             if form.is_valid():
                 user.preferred_algo_id = form.cleaned_data['algo'].id
                 print(f'user.preferred_algo_id={user.preferred_algo_id}')
