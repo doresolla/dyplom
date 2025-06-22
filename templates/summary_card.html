@@ -36,13 +36,13 @@
         <strong>Мой отзыв:</strong> {{ summary.my_review.user_rating }}/5 ⭐
         {% if summary.my_review.text %}<br>"{{ summary.my_review.text }}"{% endif %}
         <div class="review-buttons">
-        <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
+          <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Редактировать отзыв</a>
 
-        <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="review-btn">Удалить отзыв</button>
-        </form>
-      </div>
+          <form method="post" action="{% url 'delete_review' summary.my_review.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="review-btn">Удалить отзыв</button>
+          </form>
+        </div>
       </div>
     {% else %}
       <a href="{% url 'add_or_edit_review' summary.id %}" class="review-btn">Добавить отзыв</a>

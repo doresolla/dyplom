@@ -341,6 +341,7 @@ def dashboard(request):
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.reviews_list = summary.reviews.all()
+        summary.my_review = SummaryReview.objects.filter(user=user, summary=summary).first()
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
         summary.avg_rating = avg_rating if avg_rating else 0
         # формируем download_url
@@ -394,7 +395,7 @@ def settings_view(request):
             form = UserSettingsForm(request.POST)
             print(f'form.is_valid() ={form.is_valid()}')
             if form.is_valid():
-                user.preferred_algo_id = form.cleaned_data['algo'].id
+                user.preferred_algo_id = form.cleaned_data['algo']
                 print(f'user.preferred_algo_id={user.preferred_algo_id}')
                 user.save()
                 return redirect('settings')
