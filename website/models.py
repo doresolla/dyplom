@@ -2,12 +2,28 @@ from django.db import models
 from django.contrib.auth.hashers import make_password
 import os
 
+class Algo(models.Model):
+    algo_id = models.AutoField(primary_key=True)
+    algo = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.algo
+
+    @classmethod
+    def add_algo(cls, algo_str):
+        return cls.objects.get_or_create(algo_str=algo_str)[0]
+
+    def delete_algo(self):
+        self.delete()
+
 class User(models.Model):
     user_id = models.AutoField(primary_key=True, db_column='user_ID')
     email = models.EmailField(max_length=254, unique=True)
     username = models.CharField(max_length=150, unique=True)
     phone_number = models.CharField(max_length=256)
+    preferred_algo = models.ForeignKey(Algo, on_delete=models.SET_NULL, null=True, blank=True)
     password = models.CharField(max_length=256)  # Храним хеш
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     def __str__(self):
@@ -90,19 +106,7 @@ class Format(models.Model):
 
 
 
-class Algo(models.Model):
-    algo_id = models.AutoField(primary_key=True)
-    algo = models.CharField(max_length=100, unique=True)
 
-    def __str__(self):
-        return self.algo
-
-    @classmethod
-    def add_algo(cls, algo_str):
-        return cls.objects.get_or_create(algo_str=algo_str)[0]
-
-    def delete_algo(self):
-        self.delete()
 
 class Summary(models.Model):
     audio = models.ForeignKey(Audio, on_delete=models.SET_NULL, related_name='summaries')
