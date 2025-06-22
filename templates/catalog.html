@@ -31,7 +31,7 @@
 
   <div class="summary-grid">
     {% for summary in summaries %}
-      {% include 'summary_card.html' with summary=summary allow_delete=False  %}
+      {% include 'summary_card.html' with summary=summary allow_delete=False not_favorites=True %}
     {% endfor %}
   </div>
 

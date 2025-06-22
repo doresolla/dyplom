@@ -59,6 +59,7 @@
   <!-- Кнопка "Избранное" -->
 <div class="favorite-button">
   {% if user %}
+  {% if not_favorites %}
     {% if summary.is_favorite %}
       <form method="post" action="{% url 'remove_favorite' summary.audio.video.id %}">
         {% csrf_token %}
@@ -71,6 +72,8 @@
       </form>
     {% endif %}
   {% endif %}
+  {% endif %}
+
 </div>
 
   {% if summary.download_url %}

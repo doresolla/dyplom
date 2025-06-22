@@ -70,7 +70,7 @@
     <h3>Ваши конспекты</h3>
     <div class="summary-grid">
         {% for summary in user_summaries %}
-            {% include 'summary_card.html' with summary=summary user=user allow_delete=True %}
+            {% include 'summary_card.html' with summary=summary user=user allow_delete=True not_favorites=True%}
         {% endfor %}
     </div>
 {% endif %}
@@ -80,7 +80,7 @@
     <h3>Мои избранные конспекты</h3>
     <div class="summary-grid">
         {% for summary in favorite_summaries %}
-            {% include 'summary_card.html' with summary=summary user=user %}
+            {% include 'summary_card.html' with summary=summary user=user not_favorites=False %}
         {% endfor %}
     </div>
 {% endif %}
