@@ -138,7 +138,7 @@ class Text:
             return paragraphs, sent_para
         except Exception as e:
             print(e)
-
+            return None, None
 
 
     def morphy_lemmatize(self, text):
