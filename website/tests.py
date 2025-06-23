@@ -1,5 +1,4 @@
-from django.test import TestCase
-
+# -*- coding: utf-8 -*-
 from django.test import TestCase
 from website.models import User, Video, Audio, Summary, SummaryReview, Format, Algo
 from website.forms import UserRegistrationForm, VideoUploadForm
@@ -7,7 +6,7 @@ from django.urls import reverse
 from website.text import Text
 import os
 
-# --- тест моделей ---
+# --- С‚РµСЃС‚ РјРѕРґРµР»РµР№ ---
 class UserModelTest(TestCase):
     def test_create_user(self):
         user = User.objects.create(
@@ -31,7 +30,7 @@ class VideoModelTest(TestCase):
         )
         self.assertEqual(video.title, 'Test Video')
 
-# --- тест форм ---
+# --- С‚РµСЃС‚ С„РѕСЂРј ---
 class UserRegistrationFormTest(TestCase):
     def test_valid_data(self):
         form_data = {
@@ -60,19 +59,19 @@ class VideoUploadFormTest(TestCase):
         form = VideoUploadForm(data={})
         self.assertFalse(form.is_valid())
 
-# --- тест представлений ---
+# --- С‚РµСЃС‚ РїСЂРµРґСЃС‚Р°РІР»РµРЅРёР№ ---
 class RegisterUserViewTest(TestCase):
     def test_register_user_get(self):
         response = self.client.get(reverse('register_user'))
         self.assertEqual(response.status_code, 200)
 
-# --- тест обработки текста ---
+# --- С‚РµСЃС‚ РѕР±СЂР°Р±РѕС‚РєРё С‚РµРєСЃС‚Р° ---
 class TextProcessingTest(TestCase):
     def test_tokenize(self):
         test_file = 'tests/test_data/sample.txt'
         os.makedirs(os.path.dirname(test_file), exist_ok=True)
         with open(test_file, 'w', encoding='utf-8') as f:
-            f.write("Это пример текста. Здесь два предложения.")
+            f.write("Р­С‚Рѕ РїСЂРёРјРµСЂ С‚РµРєСЃС‚Р°. Р—РґРµСЃСЊ РґРІР° РїСЂРµРґР»РѕР¶РµРЅРёСЏ.")
         text_obj = Text(abs_name=test_file, video_id=1)
         text_obj.tokenize()
         self.assertGreater(len(text_obj.sentences), 0)
