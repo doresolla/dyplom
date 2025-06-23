@@ -160,6 +160,7 @@ def home(request):
                     'form': VideoUploadForm(),
                     'algo_format_form': algo_form,
                     'message_to_user': success_message,
+                    'user_name': username,
                     'video': video
                 })
     else:
