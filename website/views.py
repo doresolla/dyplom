@@ -326,11 +326,11 @@ def dashboard(request):
     elif date_from:
         user_summaries = user_summaries.filter(created_at__gte=date_from)
         favorite_summaries = favorite_summaries.filter(created_at__gte=date_from)
-        user_videos = user_videos.filter(created_at__gte=date_from)
+        user_videos = user_videos.filter(uploaded_at__gte=date_from)
     elif date_to:
         user_summaries = user_summaries.filter(created_at__lte=date_to)
         favorite_summaries = favorite_summaries.filter(created_at__lte=date_to)
-        user_videos = user_videos.filter(created_at__lte=date_to)
+        user_videos = user_videos.filter(uploaded_at__lte=date_to)
     if tag_query:
         user_summaries = user_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
         favorite_summaries = favorite_summaries.filter(audio__video__videotag__tag__tag_name__icontains=tag_query)
