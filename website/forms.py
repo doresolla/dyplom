@@ -10,6 +10,12 @@ class UserRegistrationForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['email', 'username', 'phone_number', 'password']
+        labels = {
+            'email': 'Электронная почта',
+            'username': 'Имя пользователя',
+            'phone_number': 'Номер телефона',
+            'password': 'Пароль',
+        }
 
     def clean_email(self):
         email = self.cleaned_data['email']
@@ -31,8 +37,8 @@ class UserRegistrationForm(forms.ModelForm):
 
 
 class LoginForm(forms.Form):
-    email = forms.CharField()
-    password = forms.CharField(widget=forms.PasswordInput)
+    email = forms.CharField(label='Почта')
+    password = forms.CharField(widget=forms.PasswordInput, label='Пароль')
 
 class SummaryAlgoFormatForm(forms.Form):
     algo = forms.ModelChoiceField(
