@@ -40,8 +40,9 @@
     <div class="summary-grid">
         {% for video in user_videos %}
             {% include 'video_card.html' with video=video %}
-
-        {% endfor %}
+        {% empty %}
+      <p>Извините, ничего нет</p>
+    {% endfor %}
     </div>
 {% endif %}
 
@@ -51,6 +52,8 @@
     <div class="summary-grid">
         {% for summary in user_summaries %}
             {% include 'summary_card.html' with summary=summary user=user allow_delete=True not_favorites=True%}
+        {% empty %}
+          <p>Извините, ничего нет</p>
         {% endfor %}
     </div>
 {% endif %}
