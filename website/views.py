@@ -14,7 +14,7 @@ from .models import Summary, Video, Audio, SummaryReview, User, VideoOwnership, 
 from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
-
+from django.contrib import messages
 
 def home(request):
     user_id = request.session.get('user_id')
@@ -421,6 +421,8 @@ def settings_view(request):
         elif action == 'change_email':
             new_email = request.POST.get('new_email')
             user.edit_profile(email=new_email)
+            messages.success(request, "Почта успешно изменена!")
+            return redirect('settings')
 
         elif action == 'delete_account':
             user.delete_profile()
