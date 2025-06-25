@@ -251,7 +251,6 @@ def catalog(request):
         summaries = summaries.filter(created_at__lte=date_to)
 
     for summary in summaries:
-        summary.video = summary.audio.video
         summary.transcript_text = summary.audio.get_transcription_text()
         summary.summary_text = summary.get_file_text()
         summary.is_favorite = summary.id in favorite_ids
@@ -259,7 +258,8 @@ def catalog(request):
         summary.reviews_list = summary.reviews.all()  # ← вместо summary.reviews = ...
         avg_rating = SummaryReview.objects.filter(summary=summary).aggregate(Avg('user_rating'))['user_rating__avg']
         summary.avg_rating = avg_rating if avg_rating else 0
-        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video)
+        default_tag, _ = Tag.objects.get_or_create(tag_name='Неотсортировано')
+        summary.tags = Tag.objects.filter(videotag__video=summary.audio.video) if summary.audio.video else default_tag
         if summary.file_path and os.path.exists(summary.file_path):
             relative_path = os.path.relpath(summary.file_path, settings.MEDIA_ROOT)
             # на всякий случай → делаем универсально (Windows/Linux)

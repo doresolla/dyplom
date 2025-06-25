@@ -269,7 +269,7 @@ class Text:
         algo_map = {
             'lsa': LsaSummarizer(),
             'lex_rank': LexRankSummarizer(),
-            'text_rank_sumy': TextRankSummarizer(),
+            'text_rank': TextRankSummarizer(),
             'luhn': LuhnSummarizer()
         }
         text = ''
