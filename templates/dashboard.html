@@ -38,36 +38,88 @@
 {% if section == 'videos' %}
     <h3>Ваши видео</h3>
     <div class="summary-grid">
-        {% for video in user_videos %}
+        {% for video in video_page_obj %}
             {% include 'video_card.html' with video=video %}
         {% empty %}
       <p>Извините, ничего нет</p>
     {% endfor %}
     </div>
+
+<div class="pagination">
+  {% if video_page_obj.has_previous %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ video_page_obj.previous_page_number }}">« Предыдущая</a>
+  {% endif %}
+
+  <span>Страница {{ video_page_obj.number }} из {{ video_page_obj.paginator.num_pages }}</span>
+
+  {% if user_page_obj.has_next %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ video_page_obj.next_page_number }}">Следующая »</a>
+  {% endif %}
+</div>
 {% endif %}
 
 <!-- Секция Мои конспекты -->
 {% if section == 'summaries' %}
     <h3>Ваши конспекты</h3>
     <div class="summary-grid">
-        {% for summary in user_summaries %}
+        {% for summary in user_page_obj %}
             {% include 'summary_card.html' with summary=summary user=user allow_delete=True not_favorites=True%}
         {% empty %}
           <p>Извините, ничего нет</p>
         {% endfor %}
     </div>
+<div class="pagination">
+  {% if user_page_obj.has_previous %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ user_page_obj.previous_page_number }}">« Предыдущая</a>
+  {% endif %}
+
+  <span>Страница {{ user_page_obj.number }} из {{ user_page_obj.paginator.num_pages }}</span>
+
+  {% if user_page_obj.has_next %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ user_page_obj.next_page_number }}">Следующая »</a>
+  {% endif %}
+</div>
 {% endif %}
 
 <!-- Секция Избранное -->
 {%if section == 'favorites'%}
     <h3>Мои избранные конспекты</h3>
     <div class="summary-grid">
-        {% for summary in favorite_summaries %}
+        {% for summary in fav_page_obj %}
             {% include 'summary_card.html' with summary=summary user=user allow_delete=False %}
         {% empty %}
             <p>Список избранного пуст.</p>
         {% endfor %}
     </div>
+  <div class="pagination">
+  {% if fav_page_obj.has_previous %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ fav_page_obj.previous_page_number }}">« Предыдущая</a>
+  {% endif %}
+
+  <span>Страница {{ fav_page_obj.number }} из {{ fav_page_obj.paginator.num_pages }}</span>
+
+  {% if fav_page_obj.has_next %}
+    <a href="?{% if query %}q={{ query }}&{% endif %}
+              {% if date_from %}date_from={{ date_from }}&{% endif %}
+              {% if date_to %}date_to={{ date_to }}&{% endif %}
+              page={{ fav_page_obj.next_page_number }}">Следующая »</a>
+  {% endif %}
+</div>
 {%endif%}
 
 <script>
@@ -88,6 +140,21 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 <style>
+      .pagination {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-weight: bold;
+}
+
+.pagination a {
+  margin: 0 0.5rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+.pagination a:hover {
+  text-decoration: underline;
+}
 .search-form {
   display: flex;
   flex-wrap: wrap;

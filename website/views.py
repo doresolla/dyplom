@@ -15,6 +15,7 @@ from .tasks import run_summary_task
 
 from website.video import download, get_video_duration, extract_thumbnail, PROXIES, read_file, check_title
 from django.contrib import messages
+from django.core.paginator import Paginator
 
 def home(request):
     user_id = request.session.get('user_id')
@@ -266,9 +267,11 @@ def catalog(request):
             summary.download_url = settings.MEDIA_URL + relative_path
         else:
             summary.download_url = None
-
+    paginator = Paginator(summaries, 4)  # показывать по 8 конспектов на страницу
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     return render(request, 'catalog.html', {
-        'summaries': summaries,
+        'page_obj': page_obj,
         'user': user if user else ' ',
         'user_name': user.username if user else None,
         'query': query,
@@ -373,14 +376,22 @@ def dashboard(request):
             summary.download_url = settings.MEDIA_URL + relative_path
         else:
             summary.download_url = None
-
+    fav_paginator = Paginator(favorite_summaries, 4)  # показывать по 8 конспектов на страницу
+    page_number = request.GET.get('page')
+    fav_page_obj = fav_paginator.get_page(page_number)
+    user_paginator = Paginator(user_summaries, 4)  # показывать по 8 конспектов на страницу
+    page_number = request.GET.get('page')
+    user_page_obj = user_paginator.get_page(page_number)
+    video_paginator = Paginator(user_summaries, 4)  # показывать по 8 конспектов на страницу
+    page_number = request.GET.get('page')
+    video_page_obj = video_paginator.get_page(page_number)
     return render(request, 'dashboard.html', {
-        'user_videos': user_videos,
-        'user_summaries': user_summaries,
-        'favorite_summaries': favorite_summaries,
+        'video_page_obj': video_page_obj,
+        'user_page_obj': user_page_obj,
+        'fav_page_obj': fav_page_obj,
         'query': query,
         'section': section,
-            'user_name': user.username
+        'user_name': user.username
         })
 
 def settings_view(request):
