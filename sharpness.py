@@ -55,6 +55,29 @@ def crop_roi(frame_bgr: np.ndarray, roi: Optional[Tuple[int,int,int,int]] = None
         return frame_bgr
     return frame_bgr[y1:y2, x1:x2]
 
+def normalize_roi(
+    frame_bgr: np.ndarray,
+    roi: Optional[Tuple[int, int, int, int]],
+) -> Optional[Tuple[int, int, int, int]]:
+    if roi is None:
+        return None
+
+    x1, y1, x2, y2 = map(int, roi)
+    h, w = frame_bgr.shape[:2]
+
+    x1 = max(0, min(w - 1, x1))
+    y1 = max(0, min(h - 1, y1))
+    x2 = max(1, min(w, x2))
+    y2 = max(1, min(h, y2))
+
+    if x2 <= x1 + 5 or y2 <= y1 + 5:
+        return None
+
+    return (x1, y1, x2, y2)
+
+
+
+
 def laplacian_var(gray: np.ndarray) -> float:
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
 
@@ -127,7 +150,6 @@ def is_change(prev_roi_bgr: np.ndarray, roi_bgr: np.ndarray, thr: float = 0.72) 
     sim = ssim_change(pa, pb)
     return sim < thr
 
-
 def extract_candidates(
     video_path: str,
     sample_fps: float = 1.0,
@@ -162,7 +184,6 @@ def extract_candidates(
 
         current_roi = roi
 
-        # Динамический ROI по модели: обновляем не на каждом кадре, а раз в detector_stride
         if roi_detector is not None:
             need_refresh = (sampled_idx % detector_stride == 0) or (last_dynamic_roi is None)
             if need_refresh:
@@ -243,7 +264,6 @@ def dedup_phash(keyframes: List[FrameInfo], max_hamming: int = 6) -> List[FrameI
             kept.append(k)
             hashes.append(h)
     return kept
-
 def select_keyframes(
     video_path: str,
     out_dir: str,

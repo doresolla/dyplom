@@ -6,7 +6,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 
 from faster_whisper import WhisperModel
 
-audio_path = r"C:\Users\dondu\PycharmProjects\VKR\math\math.wav"
+audio_path = r"C:\Users\dondu\PycharmProjects\automatic_conspect33\runs\теория вероятности\теория_вероятности.wav"
 
 model = WhisperModel(
     "tiny",

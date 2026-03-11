@@ -17,6 +17,7 @@ from sharpness import select_keyframes
 from keypoints_roi import detect_keypoints_for_images, detect_slide_keypoints
 
 
+
 class Main(QRunnable):
     def __init__(self, signal, link, set_videoname_signal, print_signal, llm_model, keypoints_output_mode = "auto"):
         super().__init__()
@@ -50,12 +51,8 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: 3/7 Отбор ключевых кадров")
             frames_dir = run_dir / "keyframes"
 
-            slide_model = self._build_slide_detector()
-
             roi_detector = (
-                (lambda frame: detect_slide_keypoints(frame, model=slide_model, conf=0.35))
-                if slide_model is not None
-                else detect_slide_keypoints
+                (lambda frame: detect_slide_keypoints)
             )
 
             keyframes = select_keyframes(
@@ -63,16 +60,14 @@ class Main(QRunnable):
                 str(frames_dir),
                 sample_fps=1.0,
                 roi_detector=roi_detector,
-                detector_stride=5,  # модель вызывается примерно раз в 5 sampled-кадров
+                detector_stride=5,
             )
-
             frame_paths = [Path(p) for _, p in keyframes]
 
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
             keypoints = detect_keypoints_for_images(
                 frame_paths,
-                model=slide_model,
-                conf=0.35,
+                refine_with_canny=True,
             )
             keypoints_path = run_dir / "keypoints.json"
             keypoints_path.write_text(json.dumps(keypoints, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -215,12 +210,3 @@ class Main(QRunnable):
 
         self.print_signal.result.emit(f"[crop] обрезано кадров: {len(cropped_paths)}")
         return cropped_paths
-
-    def _build_slide_detector(self):
-        try:
-            self.print_signal.result.emit("[slide-detector] weights not found, fallback to canny")
-            return None
-
-        except Exception as exc:
-            self.print_signal.result.emit(f"[slide-detector] YOLO unavailable: {exc}")
-            return None
