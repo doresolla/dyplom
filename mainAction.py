@@ -5,7 +5,7 @@ from pathlib import Path
 
 import cv2
 from PyQt6.QtCore import QRunnable
-from faster_whisper import WhisperModel
+import subprocess, sys
 
 import audio
 from OCR import run_ocr
@@ -69,11 +69,23 @@ class Main(QRunnable):
             self.print_signal.result.emit(str(exc))
 
     def _transcribe(self, audio_path: Path, out_path: Path):
-        model = WhisperModel("small", device="cpu", compute_type="int8")
-        segments, _ = model.transcribe(str(audio_path), beam_size=5, language="ru")
-        with out_path.open("w", encoding="utf-8") as f:
-            for seg in segments:
-                f.write(f"[{seg.start:.2f}-{seg.end:.2f}] {seg.text.strip()}\n")
+        # from faster_whisper import WhisperModel
+        # model = WhisperModel("small", device="cpu", compute_type="int8")
+        # segments, _ = model.transcribe(str(audio_path), beam_size=5, language="ru")
+        # with out_path.open("w", encoding="utf-8") as f:
+        #     for seg in segments:
+        #         f.write(f"[{seg.start:.2f}-{seg.end:.2f}] {seg.text.strip()}\n")
+        # def _transcribe(self, audio_path: Path, out_path: Path):
+            script = Path(__file__).resolve().parent / "transcribe_worker.py"
+            result = subprocess.run(
+                [sys.executable, str(script), str(audio_path), str(out_path)],
+                capture_output=True,
+                text=True,
+                encoding="utf-8"
+            )
+            if result.returncode != 0:
+                raise RuntimeError(result.stderr or result.stdout or "Ошибка транскрибации")
+
 
     def _crop_frames_by_keypoints(self, frame_paths, keypoints_map, out_dir: Path):
         out_dir.mkdir(parents=True, exist_ok=True)
