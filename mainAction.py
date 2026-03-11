@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os.path
 from pathlib import Path
-
+from faster_whisper import WhisperModel
+from multimodal_summary import build_multimodal_summary
 import cv2
 from PyQt6.QtCore import QRunnable
 import subprocess, sys
@@ -15,12 +17,14 @@ from sharpness import select_keyframes
 
 
 class Main(QRunnable):
-    def __init__(self, signal, link, set_videoname_signal, print_signal):
+    def __init__(self, signal, link, set_videoname_signal, print_signal, llm_model):
         super().__init__()
         self.signals = signal
         self.video = set_videoname_signal
         self.print_signal = print_signal
         self.link = link.strip('"')
+        self.llm_model = (llm_model or "qwen").lower()
+        self.OCR = False
 
     def run(self):
         try:
@@ -38,12 +42,17 @@ class Main(QRunnable):
 
             self.signals.result.emit("Статус: 2/7 Распознавание голоса")
             transcript_path = run_dir / "transcript.txt"
-            self._transcribe(assets.audio_wav, transcript_path)
-
+            if not (os.path.exists(transcript_path)):
+                self._transcribe(assets.audio_wav, transcript_path)
             self.signals.result.emit("Статус: 3/7 Отбор ключевых кадров")
             frames_dir = run_dir / "keyframes"
-            keyframes = select_keyframes(str(assets.local_video), str(frames_dir), sample_fps=1.0)
-            frame_paths = [Path(p) for _, p in keyframes]
+            if not frames_dir.exists():
+                keyframes = select_keyframes(str(assets.local_video), str(frames_dir), sample_fps=1.0)
+                frame_paths = [Path(p) for _, p in keyframes]
+            else:
+                frame_paths = sorted(frames_dir.glob("*.jpg"))
+                keyframes = [(None, str(p)) for p in frame_paths]
+
 
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
             keypoints = detect_keypoints_for_images(frame_paths)
@@ -57,10 +66,25 @@ class Main(QRunnable):
             ocr_path = run_ocr(cropped, run_dir / "ocr")
 
             self.signals.result.emit("Статус: 7/7 Абстрактивная суммаризация")
-            summary = summarize_with_llm(
-                transcript_path.read_text(encoding="utf-8") + "\n\n" + ocr_path.read_text(encoding="utf-8")
+            summary_input = transcript_path.read_text(encoding="utf-8")
+            if self.OCR:
+                summary_input += "\n\nТекст со слайдов:\n" + ocr_path.read_text(encoding="utf-8")
+            # summary = summarize_with_llm(summary_input)
+            # summary_path = save_summary(summary, run_dir / f"summary_{self.llm_model}.md")
+
+            self.signals.result.emit("Статус: 7/7 Сборка мультимодального конспекта")
+            summary_path, _ = build_multimodal_summary(
+                transcript_path=transcript_path,
+                out_path=run_dir / f"summary_{self.llm_model}.md",
+                frame_paths=cropped,  # именно cropped, чтобы в конспект шли уже выделенные слайды
+                keyframes=keyframes,  # если None, время возьмется из имени файла
+                ocr_dir=run_dir / "ocr",
+                model=self.llm_model,
+                title=f"Конспект: {source_video.stem}",
+                include_ocr=True,
+                min_chars_for_llm=220,
+                callback=self.print_signal.result.emit,
             )
-            summary_path = save_summary(summary, run_dir / "summary.md")
 
             self.signals.result.emit("Статус: Работа завершена")
             self.print_signal.result.emit(f"Готово: {summary_path}")
@@ -69,22 +93,38 @@ class Main(QRunnable):
             self.print_signal.result.emit(str(exc))
 
     def _transcribe(self, audio_path: Path, out_path: Path):
-        # from faster_whisper import WhisperModel
-        # model = WhisperModel("small", device="cpu", compute_type="int8")
-        # segments, _ = model.transcribe(str(audio_path), beam_size=5, language="ru")
-        # with out_path.open("w", encoding="utf-8") as f:
-        #     for seg in segments:
-        #         f.write(f"[{seg.start:.2f}-{seg.end:.2f}] {seg.text.strip()}\n")
-        # def _transcribe(self, audio_path: Path, out_path: Path):
-            script = Path(__file__).resolve().parent / "transcribe_worker.py"
-            result = subprocess.run(
-                [sys.executable, str(script), str(audio_path), str(out_path)],
-                capture_output=True,
-                text=True,
-                encoding="utf-8"
-            )
-            if result.returncode != 0:
-                raise RuntimeError(result.stderr or result.stdout or "Ошибка транскрибации")
+        import subprocess
+        import sys
+
+        worker_script = Path(__file__).resolve().parent / "transcribe_worker.py"
+
+        self.print_signal.result.emit("[transcribe] starting subprocess")
+
+        process = subprocess.Popen(
+            [sys.executable, str(worker_script), str(audio_path), str(out_path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            bufsize=1
+        )
+
+        for line in process.stdout:
+            line = line.rstrip()
+            if not line:
+                continue
+
+            print(line, flush=True)
+            self.print_signal.result.emit(line)
+
+        return_code = process.wait()
+
+        if return_code != 0:
+            raise RuntimeError(f"Whisper subprocess failed with code {return_code}")
+
+        self.print_signal.result.emit("[transcribe] subprocess finished")
+
+
 
 
     def _crop_frames_by_keypoints(self, frame_paths, keypoints_map, out_dir: Path):

@@ -10,6 +10,8 @@ import pytesseract
 
 _CLEAN_RE = re.compile(r"\s+")
 
+TESSERACT_EXE = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+pytesseract.pytesseract.tesseract_cmd = str(TESSERACT_EXE)
 
 def process_image(image_path: Path, lang: str = "rus+eng") -> str:
     img = cv2.imread(str(image_path))
