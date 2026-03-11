@@ -12,12 +12,13 @@ import subprocess, sys
 import audio
 from OCR import run_ocr
 from LLMsummary import save_summary, summarize_with_llm
-from keyPoints import detect_keypoints_for_images
+# from keyPoints import detect_keypoints_for_images, detect_slide_keypoints
 from sharpness import select_keyframes
+from keypoints_roi import detect_keypoints_for_images, detect_slide_keypoints
 
 
 class Main(QRunnable):
-    def __init__(self, signal, link, set_videoname_signal, print_signal, llm_model):
+    def __init__(self, signal, link, set_videoname_signal, print_signal, llm_model, keypoints_output_mode = "auto"):
         super().__init__()
         self.signals = signal
         self.video = set_videoname_signal
@@ -25,6 +26,8 @@ class Main(QRunnable):
         self.link = link.strip('"')
         self.llm_model = (llm_model or "qwen").lower()
         self.OCR = False
+        self.keypoints_model_path = Path(__file__).resolve().parent / "models" / "slide_keypoints.keras"
+        self.keypoints_output_mode = keypoints_output_mode
 
     def run(self):
         try:
@@ -46,22 +49,40 @@ class Main(QRunnable):
                 self._transcribe(assets.audio_wav, transcript_path)
             self.signals.result.emit("Статус: 3/7 Отбор ключевых кадров")
             frames_dir = run_dir / "keyframes"
-            if not frames_dir.exists():
-                keyframes = select_keyframes(str(assets.local_video), str(frames_dir), sample_fps=1.0)
-                frame_paths = [Path(p) for _, p in keyframes]
-            else:
-                frame_paths = sorted(frames_dir.glob("*.jpg"))
-                keyframes = [(None, str(p)) for p in frame_paths]
 
+            slide_model = self._build_slide_detector()
+
+            roi_detector = (
+                (lambda frame: detect_slide_keypoints(frame, model=slide_model, conf=0.35))
+                if slide_model is not None
+                else detect_slide_keypoints
+            )
+
+            keyframes = select_keyframes(
+                str(assets.local_video),
+                str(frames_dir),
+                sample_fps=1.0,
+                roi_detector=roi_detector,
+                detector_stride=5,  # модель вызывается примерно раз в 5 sampled-кадров
+            )
+
+            frame_paths = [Path(p) for _, p in keyframes]
 
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
-            keypoints = detect_keypoints_for_images(frame_paths)
+            keypoints = detect_keypoints_for_images(
+                frame_paths,
+                model=slide_model,
+                conf=0.35,
+            )
             keypoints_path = run_dir / "keypoints.json"
             keypoints_path.write_text(json.dumps(keypoints, ensure_ascii=False, indent=2), encoding="utf-8")
 
             self.signals.result.emit("Статус: 5/7 Обрезка кадров по ключевым точкам")
-            cropped = self._crop_frames_by_keypoints(frame_paths, keypoints, run_dir / "cropped")
-
+            cropped = self._crop_frames_by_keypoints(
+                frame_paths,
+                keypoints,
+                run_dir / "cropped",
+            )
             self.signals.result.emit("Статус: 6/7 OCR")
             ocr_path = run_ocr(cropped, run_dir / "ocr")
 
@@ -91,6 +112,34 @@ class Main(QRunnable):
         except Exception as exc:
             self.signals.result.emit("Статус: Ошибка")
             self.print_signal.result.emit(str(exc))
+
+    def _prepare_keyframes(self, video_path: Path, frames_dir: Path) -> list[Path]:
+        frames_dir.mkdir(parents=True, exist_ok=True)
+
+        existing = sorted(
+            p for p in frames_dir.iterdir()
+            if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        )
+
+        if existing:
+            self.print_signal.result.emit(
+                f"[keyframes] найдено готовых кадров: {len(existing)}"
+            )
+            return existing
+
+        self.print_signal.result.emit("[keyframes] запуск select_keyframes")
+        keyframes = select_keyframes(
+            str(video_path),
+            str(frames_dir),
+            sample_fps=1.0,
+        )
+
+        frame_paths = [Path(p) for _, p in keyframes if p]
+        self.print_signal.result.emit(
+            f"[keyframes] сохранено кадров: {len(frame_paths)}"
+        )
+        return frame_paths
+
 
     def _transcribe(self, audio_path: Path, out_path: Path):
         import subprocess
@@ -124,22 +173,54 @@ class Main(QRunnable):
 
         self.print_signal.result.emit("[transcribe] subprocess finished")
 
-
-
-
     def _crop_frames_by_keypoints(self, frame_paths, keypoints_map, out_dir: Path):
         out_dir.mkdir(parents=True, exist_ok=True)
         cropped_paths = []
+
         for frame_path in frame_paths:
             frame = cv2.imread(str(frame_path))
             if frame is None:
+                self.print_signal.result.emit(f"[crop] не удалось открыть {frame_path}")
                 continue
+
             meta = keypoints_map.get(str(frame_path))
-            if not meta:
+            if not meta or "bbox" not in meta:
+                self.print_signal.result.emit(f"[crop] нет bbox для {frame_path.name}")
                 continue
+
+            h, w = frame.shape[:2]
             x1, y1, x2, y2 = meta["bbox"]
+
+            x1 = max(0, min(int(x1), w - 1))
+            y1 = max(0, min(int(y1), h - 1))
+            x2 = max(1, min(int(x2), w))
+            y2 = max(1, min(int(y2), h))
+
+            if x2 <= x1 or y2 <= y1:
+                self.print_signal.result.emit(
+                    f"[crop] некорректный bbox для {frame_path.name}: {meta['bbox']}"
+                )
+                continue
+
             crop = frame[y1:y2, x1:x2]
+            if crop.size == 0:
+                self.print_signal.result.emit(
+                    f"[crop] пустой crop для {frame_path.name}"
+                )
+                continue
+
             out_path = out_dir / frame_path.name
             cv2.imwrite(str(out_path), crop)
             cropped_paths.append(out_path)
+
+        self.print_signal.result.emit(f"[crop] обрезано кадров: {len(cropped_paths)}")
         return cropped_paths
+
+    def _build_slide_detector(self):
+        try:
+            self.print_signal.result.emit("[slide-detector] weights not found, fallback to canny")
+            return None
+
+        except Exception as exc:
+            self.print_signal.result.emit(f"[slide-detector] YOLO unavailable: {exc}")
+            return None

@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Callable
 from skimage.metrics import structural_similarity as ssim
 import imagehash
 from PIL import Image
@@ -20,6 +20,25 @@ class FrameInfo:
     roi_bgr: np.ndarray
     score: float
     metrics: dict
+
+
+
+def normalize_roi(frame_bgr: np.ndarray, roi: Optional[Tuple[int, int, int, int]]) -> Optional[Tuple[int, int, int, int]]:
+    if roi is None:
+        return None
+
+    x1, y1, x2, y2 = map(int, roi)
+    h, w = frame_bgr.shape[:2]
+
+    x1 = max(0, min(w - 1, x1))
+    y1 = max(0, min(h - 1, y1))
+    x2 = max(1, min(w, x2))
+    y2 = max(1, min(h, y2))
+
+    if x2 <= x1 + 5 or y2 <= y1 + 5:
+        return None
+
+    return (x1, y1, x2, y2)
 
 # Crop image by keypoints (ROI - region of interest)
 def crop_roi(frame_bgr: np.ndarray, roi: Optional[Tuple[int,int,int,int]] = None) -> np.ndarray:
@@ -112,8 +131,10 @@ def is_change(prev_roi_bgr: np.ndarray, roi_bgr: np.ndarray, thr: float = 0.72) 
 def extract_candidates(
     video_path: str,
     sample_fps: float = 1.0,
-    roi: Optional[Tuple[int,int,int,int]] = None,
-    change_thr: float = 0.72
+    roi: Optional[Tuple[int, int, int, int]] = None,
+    change_thr: float = 0.72,
+    roi_detector: Optional[Callable[[np.ndarray], dict]] = None,
+    detector_stride: int = 5,
 ) -> List[FrameInfo]:
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -124,6 +145,8 @@ def extract_candidates(
 
     candidates: List[FrameInfo] = []
     prev_roi = None
+    last_dynamic_roi = roi
+    sampled_idx = 0
 
     i = 0
     while True:
@@ -136,26 +159,52 @@ def extract_candidates(
             continue
 
         t = float(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
-        roi_bgr = crop_roi(frame, roi)
 
-        # отбрасываем кадры без содержимого (например, полностью тёмные)
+        current_roi = roi
+
+        # Динамический ROI по модели: обновляем не на каждом кадре, а раз в detector_stride
+        if roi_detector is not None:
+            need_refresh = (sampled_idx % detector_stride == 0) or (last_dynamic_roi is None)
+            if need_refresh:
+                try:
+                    meta = roi_detector(frame)
+                    bbox = meta.get("bbox") if meta else None
+                    bbox = normalize_roi(frame, tuple(bbox)) if bbox else None
+                    if bbox is not None:
+                        last_dynamic_roi = bbox
+                except Exception:
+                    pass
+            current_roi = last_dynamic_roi
+
+        roi_bgr = crop_roi(frame, current_roi)
+
         gray = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2GRAY)
         if gray.mean() < 8:
             i += 1
+            sampled_idx += 1
             continue
 
         m = compute_content_metrics(roi_bgr)
         sc = robust_score(m)
 
-        # усиливаем шанс попадания кандидата при смене контента
         changed = False
         if prev_roi is not None and is_change(prev_roi, roi_bgr, thr=change_thr):
             changed = True
-            sc *= 1.15  # небольшой бонус
+            sc *= 1.15
 
-        candidates.append(FrameInfo(t=t, frame_bgr=frame, roi_bgr=roi_bgr, score=sc, metrics={**m, "changed": changed}))
+        candidates.append(
+            FrameInfo(
+                t=t,
+                frame_bgr=frame,
+                roi_bgr=roi_bgr,
+                score=sc,
+                metrics={**m, "changed": changed},
+            )
+        )
+
         prev_roi = roi_bgr
         i += 1
+        sampled_idx += 1
 
     cap.release()
     return candidates
@@ -199,13 +248,22 @@ def select_keyframes(
     video_path: str,
     out_dir: str,
     sample_fps: float = 1.0,
-    roi: Optional[Tuple[int,int,int,int]] = None,
+    roi: Optional[Tuple[int, int, int, int]] = None,
     change_thr: float = 0.72,
-    max_hamming: int = 6
+    max_hamming: int = 6,
+    roi_detector: Optional[Callable[[np.ndarray], dict]] = None,
+    detector_stride: int = 5,
 ) -> List[Tuple[float, str]]:
     os.makedirs(out_dir, exist_ok=True)
 
-    cands = extract_candidates(video_path, sample_fps=sample_fps, roi=roi, change_thr=change_thr)
+    cands = extract_candidates(
+        video_path,
+        sample_fps=sample_fps,
+        roi=roi,
+        change_thr=change_thr,
+        roi_detector=roi_detector,
+        detector_stride=detector_stride,
+    )
     segs = segment_by_change(cands)
     keys = best_per_segment(segs)
     keys = dedup_phash(keys, max_hamming=max_hamming)
