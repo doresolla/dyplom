@@ -1,5 +1,5 @@
 import cv2
-from slide_locator import (
+from image_processing.slide_locator import (
     analyze_video_complexity,
     detect_slide_keypoints,
     extract_video_keypoints,

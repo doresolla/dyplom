@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-from LLMsummary import summarize_with_llm
+from text_processing.LLMsummary import summarize_with_llm
 
 
 TRANSCRIPT_LINE_RE = re.compile(

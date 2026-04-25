@@ -9,12 +9,11 @@ import cv2
 from PyQt6.QtCore import QRunnable
 import subprocess, sys
 
-import audio
-from OCR import run_ocr
-from LLMsummary import save_summary, summarize_with_llm
-# from keyPoints import detect_keypoints_for_images, detect_slide_keypoints
-from sharpness import select_keyframes
-from keypoints_roi import detect_keypoints_for_images, detect_slide_keypoints
+import text_processing.audio as audio
+from image_processing.OCR import run_ocr
+from text_processing.LLMsummary import save_summary, summarize_with_llm
+from image_processing.sharpness import select_keyframes
+from image_processing.keyPoints import detect_keypoints_for_images, detect_slide_keypoints
 
 
 
@@ -67,7 +66,6 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
             keypoints = detect_keypoints_for_images(
                 frame_paths,
-                refine_with_canny=True,
             )
             keypoints_path = run_dir / "keypoints.json"
             keypoints_path.write_text(json.dumps(keypoints, ensure_ascii=False, indent=2), encoding="utf-8")

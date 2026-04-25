@@ -1,0 +1,17 @@
+*.jpg
+*.pyc
+__pycache__/
+venv/
+.idea/
+.DS_Store
+*.log
+*.env
+*.sqlite3
+*.db
+*.bak
+*.tmp
+*.swp
+*.swo
+*.safetensors
+models/
+runs/

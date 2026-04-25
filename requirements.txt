@@ -1,0 +1,50 @@
+# Python 3.12
+# Base requirements for the desktop pipeline.
+# Torch is intentionally NOT pinned here: install it separately
+# with either the GPU or CPU command shown below.
+
+PyQt6>=6.7,<6.10
+
+numpy>=1.26,<2
+pandas>=2.2,<3
+scipy>=1.13,<2
+scikit-learn>=1.5,<2
+scikit-image>=0.24,<1
+networkx>=3.3,<4
+openpyxl>=3.1,<4
+
+opencv-python>=4.10,<5
+Pillow>=10.4,<12
+imagehash>=4.3,<5
+pytesseract>=0.3.13,<0.4
+
+# Stable HF stack for sentence-transformers
+sentence-transformers==5.2.3
+transformers>=4.34,<5
+huggingface-hub>=0.24,<1
+safetensors>=0.4,<1
+
+aiohttp>=3.10,<4
+ctranslate2>=4,<5
+faster-whisper>=1.1,<2
+requests>=2.32,<3
+yt-dlp>=2025.1.26
+
+bitsandbytes>=0.49.2
+accelerate>=1.13.0
+# Optional extras for separate scripts / notebooks:
+# jinja2>=3.1,<4
+# yake>=0.4,<0.5
+# matplotlib>=3.9,<4
+# pycocotools>=2.0,<3
+# tensorflow>=2.18,<2.20
+# mpi4py>=4,<5
+# pywhispercpp>=1,<2
+
+# After installation run manually:
+# python -m spacy download ru_core_news_md
+# python -c "import nltk; nltk.download('punkt'); nltk.download('punkt_tab'); nltk.download('stopwords'); nltk.download('wordnet')"
+
+# System tools required outside pip:
+# 1) FFmpeg in PATH
+# 2) Tesseract OCR installed with Russian language data
