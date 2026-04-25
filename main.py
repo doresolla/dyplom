@@ -1,6 +1,8 @@
 import sys
 
+
 from PyQt6.QtCore import QObject, pyqtSignal, QThreadPool
+
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,

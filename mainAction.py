@@ -13,7 +13,7 @@ import text_processing.audio as audio
 from image_processing.OCR import run_ocr
 from text_processing.LLMsummary import save_summary, summarize_with_llm
 from image_processing.sharpness import select_keyframes
-from image_processing.keyPoints import detect_keypoints_for_images, detect_slide_keypoints
+from image_processing.keyPoints import detect_keypoints_for_images, detect_slide_keypoints, crop_frames_by_keypoints
 
 
 
@@ -26,7 +26,7 @@ class Main(QRunnable):
         self.link = link.strip('"')
         self.llm_model = (llm_model or "qwen").lower()
         self.OCR = False
-        self.keypoints_model_path = Path(__file__).resolve().parent / "models" / "slide_keypoints.keras"
+        self.keypoints_model_path = Path("D:/Disk C/data/media/slide_dataset/output/best.weights.h5")
         self.keypoints_output_mode = keypoints_output_mode
 
     def run(self):
@@ -50,8 +50,10 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: 3/7 Отбор ключевых кадров")
             frames_dir = run_dir / "keyframes"
 
-            roi_detector = (
-                (lambda frame: detect_slide_keypoints)
+            roi_detector = lambda frame: detect_slide_keypoints(
+                frame_bgr=frame,
+                model_path=self.keypoints_model_path,
+                output_mode=self.keypoints_output_mode,
             )
 
             keyframes = select_keyframes(
@@ -66,12 +68,21 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
             keypoints = detect_keypoints_for_images(
                 frame_paths,
-            )
+                model_path=self.keypoints_model_path,
+                output_mode=self.keypoints_output_mode,
+                image_size=320,
+                backbone="MobileNetV2",
+                dropout=0.2,
+                roi_pad_ratio=0.20,
+                max_side=1200,
+                min_line_len=80,
+                callback=self.print_signal.result.emit
+           )
             keypoints_path = run_dir / "keypoints.json"
             keypoints_path.write_text(json.dumps(keypoints, ensure_ascii=False, indent=2), encoding="utf-8")
 
             self.signals.result.emit("Статус: 5/7 Обрезка кадров по ключевым точкам")
-            cropped = self._crop_frames_by_keypoints(
+            cropped = crop_frames_by_keypoints(
                 frame_paths,
                 keypoints,
                 run_dir / "cropped",
@@ -166,45 +177,4 @@ class Main(QRunnable):
 
         self.print_signal.result.emit("[transcribe] subprocess finished")
 
-    def _crop_frames_by_keypoints(self, frame_paths, keypoints_map, out_dir: Path):
-        out_dir.mkdir(parents=True, exist_ok=True)
-        cropped_paths = []
-
-        for frame_path in frame_paths:
-            frame = cv2.imread(str(frame_path))
-            if frame is None:
-                self.print_signal.result.emit(f"[crop] не удалось открыть {frame_path}")
-                continue
-
-            meta = keypoints_map.get(str(frame_path))
-            if not meta or "bbox" not in meta:
-                self.print_signal.result.emit(f"[crop] нет bbox для {frame_path.name}")
-                continue
-
-            h, w = frame.shape[:2]
-            x1, y1, x2, y2 = meta["bbox"]
-
-            x1 = max(0, min(int(x1), w - 1))
-            y1 = max(0, min(int(y1), h - 1))
-            x2 = max(1, min(int(x2), w))
-            y2 = max(1, min(int(y2), h))
-
-            if x2 <= x1 or y2 <= y1:
-                self.print_signal.result.emit(
-                    f"[crop] некорректный bbox для {frame_path.name}: {meta['bbox']}"
-                )
-                continue
-
-            crop = frame[y1:y2, x1:x2]
-            if crop.size == 0:
-                self.print_signal.result.emit(
-                    f"[crop] пустой crop для {frame_path.name}"
-                )
-                continue
-
-            out_path = out_dir / frame_path.name
-            cv2.imwrite(str(out_path), crop)
-            cropped_paths.append(out_path)
-
-        self.print_signal.result.emit(f"[crop] обрезано кадров: {len(cropped_paths)}")
-        return cropped_paths
+    

@@ -7,16 +7,13 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from text_processing.LLMsummary import summarize_with_llm
 
+from utils import _emit
+
 
 TRANSCRIPT_LINE_RE = re.compile(
     r"^\[(?P<start>\d+(?:\.\d+)?)\s*-\s*(?P<end>\d+(?:\.\d+)?)\]\s*(?P<text>.*)$"
 )
 TIME_FROM_NAME_RE = re.compile(r"_(?P<time>\d+(?:\.\d+)?)s(?:\.[^.]+)?$")
-
-
-def _emit(callback: Optional[Callable[[str], None]], text: str) -> None:
-    if callback is not None:
-        callback(text)
 
 
 def _clean_text(text: str) -> str:
