@@ -3,104 +3,50 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Iterable, Optional
+from typing import Iterable, Any
 
 import cv2
 import numpy as np
-import tensorflow as tf
 
-from utils import _emit
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-from .detect_slide.slide_bbox_common import (
-    load_trained_model,
-    denormalize_xywh,
-    clip_boxes_xywh_np,
-)
-
-from .detect_slide.refine_bbox import (
-    detect_presentation_surface,
-    bbox_xywh_to_quad,
-    order_quad_pts,
-)
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+except Exception as exc:
+    tf = None
+    keras = None
+    _TF_IMPORT_ERROR = exc
+else:
+    _TF_IMPORT_ERROR = None
 
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Можно переопределить через переменную окружения:
-# set SLIDE_BBOX_MODEL_PATH=...
+# Путь к модели можно задать через переменную окружения KEYPOINTS_MODEL_PATH
+# либо оставить файл по умолчанию в .\models\slide_keypoints.keras
 DEFAULT_MODEL_PATH = Path(
     os.getenv(
-        "SLIDE_BBOX_MODEL_PATH",
-        str(BASE_DIR / "models" / "slide_bbox" / "saved_model")
+        "KEYPOINTS_MODEL_PATH",
+        str(BASE_DIR / "models" / "slide_keypoints.keras")
     )
 )
 
-DEFAULT_IMAGE_SIZE = int(os.getenv("SLIDE_BBOX_IMAGE_SIZE", "320"))
-DEFAULT_BACKBONE = os.getenv("SLIDE_BBOX_BACKBONE", "MobileNetV2")
-DEFAULT_DROPOUT = float(os.getenv("SLIDE_BBOX_DROPOUT", "0.2"))
+# Режим интерпретации выхода модели:
+# auto        - определить автоматически
+# bbox_norm   - [x, y, w, h] в нормированных координатах [0..1]
+# bbox_px     - [x, y, w, h] в пикселях относительно входа модели
+# points_norm - [x1, y1, x2, y2, x3, y3, x4, y4] в [0..1]
+# points_px   - те же 8 значений, но в пикселях относительно входа модели
+DEFAULT_OUTPUT_MODE = os.getenv("KEYPOINTS_OUTPUT_MODE", "auto").strip().lower()
 
-DEFAULT_ROI_PAD_RATIO = float(os.getenv("SLIDE_BBOX_ROI_PAD_RATIO", "0.20"))
-DEFAULT_MAX_SIDE = int(os.getenv("SLIDE_BBOX_MAX_SIDE", "1200"))
-DEFAULT_MIN_LINE_LEN = int(os.getenv("SLIDE_BBOX_MIN_LINE_LEN", "80"))
-
+# Если модели нет или она упала на инференсе, использовать Canny fallback
 DEFAULT_ALLOW_FALLBACK = os.getenv("KEYPOINTS_ALLOW_FALLBACK", "1") == "1"
-DEFAULT_OUTPUT_MODE = "auto"  # оставлено только для совместимости со старым вызовом
 
 
-def _resolve_model_path(model_path: str | Path | None) -> Path:
-    if model_path is None:
-        return DEFAULT_MODEL_PATH
-    return Path(model_path)
-
-
-@lru_cache(maxsize=4)
-def _load_bbox_model_cached(
-    model_path_str: str,
-    image_size: int,
-    backbone: str,
-    dropout: float,
-):
-    return load_trained_model(
-        model_path=model_path_str,
-        image_size=image_size,
-        backbone=backbone,
-        dropout=dropout,
-        compile_for_eval=False,
-    )
-
-
-def _clip_quad_to_image(quad: np.ndarray, w: int, h: int) -> np.ndarray:
-    quad = np.asarray(quad, dtype=np.float32).reshape(4, 2).copy()
-    quad[:, 0] = np.clip(quad[:, 0], 0, max(0, w - 1))
-    quad[:, 1] = np.clip(quad[:, 1], 0, max(0, h - 1))
-    return order_quad_pts(quad)
-
-
-def _bbox_xyxy_from_quad(quad: np.ndarray, w: int, h: int) -> list[int]:
-    quad = np.asarray(quad, dtype=np.float32).reshape(-1, 2)
-
-    x1 = int(np.floor(np.min(quad[:, 0])))
-    y1 = int(np.floor(np.min(quad[:, 1])))
-    x2 = int(np.ceil(np.max(quad[:, 0])))
-    y2 = int(np.ceil(np.max(quad[:, 1])))
-
-    x1 = max(0, min(x1, w - 1))
-    y1 = max(0, min(y1, h - 1))
-    x2 = max(1, min(x2, w))
-    y2 = max(1, min(y2, h))
-
-    if x2 <= x1:
-        x2 = min(w, x1 + 1)
-    if y2 <= y1:
-        y2 = min(h, y1 + 1)
-
-    return [x1, y1, x2, y2]
-
-
-def _safe_default_quad(w: int, h: int, margin_ratio: float = 0.08) -> np.ndarray:
-    mx = int(round(w * margin_ratio))
-    my = int(round(h * margin_ratio))
-
+def _safe_default_points(w: int, h: int, margin_ratio: float = 0.08) -> np.ndarray:
+    mx = int(w * margin_ratio)
+    my = int(h * margin_ratio)
     return np.array(
         [
             [mx, my],
@@ -112,39 +58,290 @@ def _safe_default_quad(w: int, h: int, margin_ratio: float = 0.08) -> np.ndarray
     )
 
 
-def _prepare_frame_for_bbox_model(frame_bgr: np.ndarray, image_size: int) -> tf.Tensor:
-    """
-    Препроцессинг повторяет смысл predict_single_image:
-    RGB, float32 [0..1], resize до image_size.
-    """
-    frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-
-    image = tf.convert_to_tensor(frame_rgb, dtype=tf.uint8)
-    image = tf.image.convert_image_dtype(image, tf.float32)
-    image = tf.image.resize(image, (image_size, image_size), method="bilinear")
-
-    return tf.expand_dims(image, axis=0)
+def _clip_points(points: np.ndarray, w: int, h: int) -> np.ndarray:
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 2).copy()
+    pts[:, 0] = np.clip(pts[:, 0], 0, max(0, w - 1))
+    pts[:, 1] = np.clip(pts[:, 1], 0, max(0, h - 1))
+    return pts
 
 
-def _predict_bbox_from_frame(
-    model,
-    frame_bgr: np.ndarray,
-    image_size: int,
-) -> tuple[list[float], list[float]]:
+def _order_points(points: np.ndarray) -> np.ndarray:
     """
-    Возвращает:
-    - model_xywh_abs: [x, y, w, h] в пикселях исходного кадра
-    - model_xywh_rel: [x, y, w, h] в нормированных координатах
+    Упорядочивание: top-left, top-right, bottom-right, bottom-left.
     """
+    pts = np.asarray(points, dtype=np.float32).reshape(4, 2)
+    center = pts.mean(axis=0)
+
+    angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
+    pts = pts[np.argsort(angles)]
+
+    sums = pts.sum(axis=1)
+    start_idx = int(np.argmin(sums))
+    pts = np.roll(pts, -start_idx, axis=0)
+
+    # Проверка ориентации: если пошли против ожидаемого обхода — переворачиваем
+    tl, p1, p2, p3 = pts
+    cross = (p1[0] - tl[0]) * (p3[1] - tl[1]) - (p1[1] - tl[1]) * (p3[0] - tl[0])
+    if cross < 0:
+        pts = np.array([pts[0], pts[3], pts[2], pts[1]], dtype=np.float32)
+
+    return pts
+
+
+def _bbox_from_points(points: np.ndarray) -> list[int]:
+    pts = np.asarray(points, dtype=np.float32).reshape(-1, 2)
+    x1 = int(np.floor(np.min(pts[:, 0])))
+    y1 = int(np.floor(np.min(pts[:, 1])))
+    x2 = int(np.ceil(np.max(pts[:, 0])))
+    y2 = int(np.ceil(np.max(pts[:, 1])))
+    return [x1, y1, x2, y2]
+
+
+def _canny_fallback(frame_bgr: np.ndarray) -> dict:
     h, w = frame_bgr.shape[:2]
+    gray = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blur, 40, 140)
 
-    inp = _prepare_frame_for_bbox_model(frame_bgr, image_size=image_size)
-    pred_rel = model.predict(inp, verbose=0)[0]
-    pred_rel = clip_boxes_xywh_np(pred_rel)
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    best = None
+    best_area = 0.0
 
-    pred_abs = denormalize_xywh(pred_rel, w, h)
+    for cnt in contours:
+        peri = cv2.arcLength(cnt, True)
+        approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+        if len(approx) != 4:
+            continue
+        area = cv2.contourArea(approx)
+        if area < 0.1 * w * h:
+            continue
+        if area > best_area:
+            best_area = area
+            best = approx.reshape(4, 2).astype(np.float32)
 
-    return [float(v) for v in pred_abs], [float(v) for v in pred_rel]
+    if best is None:
+        best = _safe_default_points(w, h)
+    else:
+        best = _order_points(best)
+
+    best = _clip_points(best, w, h)
+    return {
+        "points": best.astype(int).tolist(),
+        "bbox": _bbox_from_points(best),
+        "score": 0.0,
+        "method": "canny_fallback",
+    }
+
+
+@lru_cache(maxsize=4)
+def _load_model(model_path_str: str):
+    if keras is None:
+        raise ImportError(
+            "TensorFlow/Keras не импортирован. "
+            f"Исходная ошибка: {_TF_IMPORT_ERROR}"
+        )
+
+    model_path = Path(model_path_str)
+    if not model_path.exists():
+        raise FileNotFoundError(f"Модель не найдена: {model_path}")
+
+    model = keras.models.load_model(str(model_path), compile=False)
+    return model
+
+
+def _resolve_model_path(model_path: str | Path | None) -> Path:
+    if model_path is None:
+        return DEFAULT_MODEL_PATH
+    return Path(model_path)
+
+
+def _get_model_input_spec(model) -> tuple[int, int, int]:
+    """
+    Возвращает (height, width, channels) для модели channels_last.
+    """
+    input_shape = model.input_shape
+    if isinstance(input_shape, list):
+        input_shape = input_shape[0]
+
+    if input_shape is None or len(input_shape) != 4:
+        raise ValueError(f"Неожиданный input_shape модели: {input_shape}")
+
+    _, h, w, c = input_shape
+    h = int(h) if h is not None else 224
+    w = int(w) if w is not None else 224
+    c = int(c) if c is not None else 3
+    return h, w, c
+
+
+def _prepare_image(frame_bgr: np.ndarray, target_h: int, target_w: int, channels: int) -> np.ndarray:
+    if channels == 1:
+        img = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY)
+        img = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
+        img = img.astype(np.float32) / 255.0
+        img = np.expand_dims(img, axis=-1)
+        return img
+
+    img = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
+    img = img.astype(np.float32) / 255.0
+    return img
+
+
+def _to_numpy(x: Any) -> np.ndarray:
+    if isinstance(x, np.ndarray):
+        return x
+    return np.asarray(x)
+
+
+def _extract_prediction_and_score(raw_pred: Any) -> tuple[np.ndarray, np.ndarray | None]:
+    """
+    Поддерживает разные варианты выхода модели:
+    - np.ndarray формы (B, 4) или (B, 8)
+    - list/tuple из нескольких выходов
+    - dict с ключами вроде points/bbox/score/confidence
+    """
+    if isinstance(raw_pred, dict):
+        pred = None
+        score = None
+
+        for key in ("points", "keypoints", "coords", "coordinates", "bbox", "boxes", "output_1"):
+            if key in raw_pred:
+                pred = _to_numpy(raw_pred[key])
+                break
+        if pred is None:
+            pred = _to_numpy(next(iter(raw_pred.values())))
+
+        for key in ("score", "scores", "confidence", "conf", "output_2"):
+            if key in raw_pred:
+                score = _to_numpy(raw_pred[key])
+                break
+
+        return pred, score
+
+    if isinstance(raw_pred, (list, tuple)):
+        arrays = [_to_numpy(x) for x in raw_pred]
+        pred = None
+        score = None
+
+        for arr in arrays:
+            if arr.ndim >= 2 and arr.shape[-1] in (4, 8):
+                pred = arr
+                break
+
+        if pred is None:
+            pred = arrays[0]
+
+        for arr in arrays:
+            if arr is pred:
+                continue
+            if arr.ndim >= 1 and (arr.shape[-1] == 1 or arr.ndim == 1):
+                score = arr
+                break
+
+        return pred, score
+
+    pred = _to_numpy(raw_pred)
+    return pred, None
+
+
+def _sigmoid_if_needed(values: np.ndarray) -> np.ndarray:
+    """
+    Иногда линейный выход модели обучали на [0..1], но на инференсе он слегка выходит за пределы.
+    Если значения небольшие по модулю, аккуратно переводим через sigmoid.
+    """
+    v = values.astype(np.float32)
+    if np.min(v) >= 0.0 and np.max(v) <= 1.0:
+        return v
+
+    if np.max(np.abs(v)) <= 8.0 and (np.min(v) < 0.0 or np.max(v) > 1.0):
+        return 1.0 / (1.0 + np.exp(-v))
+
+    return v
+
+
+def _decode_prediction(
+    pred_row: np.ndarray,
+    frame_w: int,
+    frame_h: int,
+    model_w: int,
+    model_h: int,
+    output_mode: str = "auto",
+) -> np.ndarray:
+    """
+    Возвращает 4 точки слайда.
+    """
+    values = np.asarray(pred_row, dtype=np.float32).reshape(-1)
+
+    if values.size not in (4, 8):
+        raise ValueError(
+            f"Ожидалось 4 или 8 значений на выходе модели, получено: {values.size}"
+        )
+
+    mode = (output_mode or "auto").strip().lower()
+
+    if mode == "auto":
+        if values.size == 8:
+            v = _sigmoid_if_needed(values.copy())
+            if np.min(v) >= -0.1 and np.max(v) <= 1.1:
+                mode = "points_norm"
+                values = v
+            else:
+                mode = "points_px"
+        else:
+            v = _sigmoid_if_needed(values.copy())
+            if np.min(v) >= -0.1 and np.max(v) <= 1.1:
+                mode = "bbox_norm"
+                values = v
+            else:
+                mode = "bbox_px"
+
+    if mode == "points_norm":
+        pts = values.reshape(4, 2).copy()
+        pts[:, 0] *= frame_w
+        pts[:, 1] *= frame_h
+        return pts
+
+    if mode == "points_px":
+        pts = values.reshape(4, 2).copy()
+        pts[:, 0] *= frame_w / float(model_w)
+        pts[:, 1] *= frame_h / float(model_h)
+        return pts
+
+    if mode == "bbox_norm":
+        x, y, w, h = values.tolist()
+        x1 = x * frame_w
+        y1 = y * frame_h
+        x2 = (x + w) * frame_w
+        y2 = (y + h) * frame_h
+        return np.array(
+            [
+                [x1, y1],
+                [x2, y1],
+                [x2, y2],
+                [x1, y2],
+            ],
+            dtype=np.float32,
+        )
+
+    if mode == "bbox_px":
+        x, y, w, h = values.tolist()
+        sx = frame_w / float(model_w)
+        sy = frame_h / float(model_h)
+        x1 = x * sx
+        y1 = y * sy
+        x2 = (x + w) * sx
+        y2 = (y + h) * sy
+        return np.array(
+            [
+                [x1, y1],
+                [x2, y1],
+                [x2, y2],
+                [x1, y2],
+            ],
+            dtype=np.float32,
+        )
+
+    raise ValueError(f"Неизвестный output_mode: {output_mode}")
 
 
 def detect_slide_keypoints(
@@ -152,104 +349,71 @@ def detect_slide_keypoints(
     model_path: str | Path | None = None,
     output_mode: str = DEFAULT_OUTPUT_MODE,
     allow_fallback: bool = DEFAULT_ALLOW_FALLBACK,
-    image_size: int = DEFAULT_IMAGE_SIZE,
-    backbone: str = DEFAULT_BACKBONE,
-    dropout: float = DEFAULT_DROPOUT,
-    roi_pad_ratio: float = DEFAULT_ROI_PAD_RATIO,
-    max_side: int = DEFAULT_MAX_SIDE,
-    min_line_len: int = DEFAULT_MIN_LINE_LEN,
-    fallback_to_full_image: bool = True,
 ) -> dict:
     """
-    Совместимый интерфейс со старым keyPoints.py.
-
     Возвращает:
     {
         "points": [[x1,y1], [x2,y2], [x3,y3], [x4,y4]],
         "bbox": [x1, y1, x2, y2],
         "score": float,
-        "method": str
+        "method": "keras_model" | "canny_fallback"
     }
-
-    Внутри:
-    1) bbox-модель определяет грубый bbox слайда;
-    2) detect_presentation_surface уточняет четырехугольник;
-    3) если уточнить не удалось, используется bbox модели как quad.
     """
-    _ = output_mode  # параметр оставлен для совместимости со старым вызовом
-
     if frame_bgr is None or frame_bgr.size == 0:
         raise ValueError("Пустой кадр передан в detect_slide_keypoints")
 
     frame_h, frame_w = frame_bgr.shape[:2]
 
     try:
-        resolved_model_path = _resolve_model_path(model_path)
+        model_path = _resolve_model_path(model_path)
+        model = _load_model(str(model_path))
+        model_h, model_w, channels = _get_model_input_spec(model)
 
-        model = _load_bbox_model_cached(
-            str(resolved_model_path),
-            int(image_size),
-            str(backbone),
-            float(dropout),
-        )
+        inp = _prepare_image(frame_bgr, model_h, model_w, channels)
+        inp = np.expand_dims(inp, axis=0)
 
-        model_xywh_abs, model_xywh_rel = _predict_bbox_from_frame(
-            model=model,
-            frame_bgr=frame_bgr,
-            image_size=int(image_size),
-        )
+        raw_pred = model.predict(inp, verbose=0)
+        pred_arr, score_arr = _extract_prediction_and_score(raw_pred)
 
-        quad, info = detect_presentation_surface(
-            img=frame_bgr,
-            model_roi_xywh=model_xywh_abs,
-            roi_pad_ratio=roi_pad_ratio,
-            max_side=max_side,
-            min_line_len=min_line_len,
-            fallback_to_full_image=fallback_to_full_image,
-        )
-
-        if quad is None:
-            quad = bbox_xywh_to_quad(model_xywh_abs)
-            method = "bbox_model_fallback"
-            score = 0.5
+        pred_arr = np.asarray(pred_arr)
+        if pred_arr.ndim == 1:
+            pred_row = pred_arr
         else:
-            method = "bbox_model_refined_quad"
-            score = 1.0
+            pred_row = pred_arr[0]
 
-        quad = _clip_quad_to_image(quad, frame_w, frame_h)
-        bbox = _bbox_xyxy_from_quad(quad, frame_w, frame_h)
+        points = _decode_prediction(
+            pred_row=pred_row,
+            frame_w=frame_w,
+            frame_h=frame_h,
+            model_w=model_w,
+            model_h=model_h,
+            output_mode=output_mode,
+        )
 
-        result = {
-            "points": np.round(quad).astype(int).tolist(),
+        points = _clip_points(points, frame_w, frame_h)
+        points = _order_points(points)
+        bbox = _bbox_from_points(points)
+
+        score = 1.0
+        if score_arr is not None:
+            score_np = np.asarray(score_arr).reshape(-1)
+            if score_np.size > 0:
+                score = float(score_np[0])
+
+        return {
+            "points": points.astype(int).tolist(),
             "bbox": bbox,
-            "score": float(score),
-            "method": method,
-
-            # Дополнительные поля не ломают старый код,
-            # но полезны для отладки.
-            "model_bbox_xywh": [float(v) for v in model_xywh_abs],
-            "model_bbox_rel_xywh": [float(v) for v in model_xywh_rel],
-            "search_bbox": info.get("search_xyxy") if isinstance(info, dict) else None,
-            "refine_score": float(info.get("best_score")) if isinstance(info, dict) and "best_score" in info else None,
+            "score": score,
+            "method": "keras_model",
         }
-
-        return result
 
     except Exception as exc:
         if not allow_fallback:
-            raise RuntimeError(f"Ошибка bbox/quad детектора: {exc}") from exc
+            raise RuntimeError(f"Ошибка детекции ключевых точек Keras-моделью: {exc}") from exc
 
-        quad = _safe_default_quad(frame_w, frame_h)
-        quad = _clip_quad_to_image(quad, frame_w, frame_h)
-        bbox = _bbox_xyxy_from_quad(quad, frame_w, frame_h)
-
-        return {
-            "points": np.round(quad).astype(int).tolist(),
-            "bbox": bbox,
-            "score": 0.0,
-            "method": "safe_default_fallback",
-            "detector_error": str(exc),
-        }
+        result = _canny_fallback(frame_bgr)
+        result["keras_error"] = str(exc)
+        return result
 
 
 def detect_keypoints_for_images(
@@ -257,16 +421,9 @@ def detect_keypoints_for_images(
     model_path: str | Path | None = None,
     output_mode: str = DEFAULT_OUTPUT_MODE,
     allow_fallback: bool = DEFAULT_ALLOW_FALLBACK,
-    image_size: int = DEFAULT_IMAGE_SIZE,
-    backbone: str = DEFAULT_BACKBONE,
-    dropout: float = DEFAULT_DROPOUT,
-    roi_pad_ratio: float = DEFAULT_ROI_PAD_RATIO,
-    max_side: int = DEFAULT_MAX_SIDE,
-    min_line_len: int = DEFAULT_MIN_LINE_LEN,
-    callback: Optional[Callable[[str], None]] = None,
 ) -> dict[str, dict]:
     """
-    Совместимо с текущим mainAction.py:
+    Совместим с текущим mainAction.py:
     принимает список путей к кадрам и возвращает словарь:
     {
         "path/to/image.jpg": {
@@ -282,7 +439,6 @@ def detect_keypoints_for_images(
     for image_path in image_paths:
         image_path = Path(image_path)
         frame = cv2.imread(str(image_path))
-
         if frame is None:
             continue
 
@@ -291,118 +447,6 @@ def detect_keypoints_for_images(
             model_path=model_path,
             output_mode=output_mode,
             allow_fallback=allow_fallback,
-            image_size=image_size,
-            backbone=backbone,
-            dropout=dropout,
-            roi_pad_ratio=roi_pad_ratio,
-            max_side=max_side,
-            min_line_len=min_line_len,
         )
 
     return result
-
-def _order_quad_for_warp(points):
-    pts = np.asarray(points, dtype=np.float32).reshape(4, 2)
-    center = pts.mean(axis=0)
-
-    angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
-    pts = pts[np.argsort(angles)]
-
-    start_idx = int(np.argmin(pts.sum(axis=1)))
-    pts = np.roll(pts, -start_idx, axis=0)
-
-    return pts
-
-
-def _warp_frame_by_quad( frame, points):
-    src = _order_quad_for_warp(points)
-
-    tl, tr, br, bl = src
-
-    width_top = np.linalg.norm(tr - tl)
-    width_bottom = np.linalg.norm(br - bl)
-    height_left = np.linalg.norm(bl - tl)
-    height_right = np.linalg.norm(br - tr)
-
-    out_w = int(round(max(width_top, width_bottom)))
-    out_h = int(round(max(height_left, height_right)))
-
-    if out_w < 10 or out_h < 10:
-        return None
-
-    dst = np.array(
-        [
-            [0, 0],
-            [out_w - 1, 0],
-            [out_w - 1, out_h - 1],
-            [0, out_h - 1],
-        ],
-        dtype=np.float32,
-    )
-
-    M = cv2.getPerspectiveTransform(src, dst)
-    return cv2.warpPerspective(frame, M, (out_w, out_h))
-
-
-def crop_frames_by_keypoints(frame_paths,
-                             keypoints_map, out_dir: Path, 
-                             callback: Optional[Callable[[str], None]] = None
-                             ) -> list[Path]:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    cropped_paths = []
-
-    for frame_path in frame_paths:
-        frame = cv2.imread(str(frame_path))
-        if frame is None:
-            _emit(callback, f"[crop] не удалось открыть {frame_path}")
-            continue
-
-        meta = keypoints_map.get(str(frame_path))
-        if not meta:
-            _emit(callback, f"[crop] нет meta для {frame_path.name}")
-            continue
-
-        crop = None
-
-        # Новый основной путь: перспективная обрезка по уточненному четырехугольнику.
-        if "points" in meta and meta["points"]:
-            try:
-                crop = _warp_frame_by_quad(frame, meta["points"])
-            except Exception as exc:
-                _emit(callback, 
-                      f"[crop] ошибка warp по quad для {frame_path.name}: {exc}"
-                )
-                crop = None
-
-        # Старый fallback: обычная обрезка по bbox.
-        if crop is None:
-            if "bbox" not in meta:
-                _emit(callback, f"[crop] нет bbox для {frame_path.name}")
-                continue
-
-            h, w = frame.shape[:2]
-            x1, y1, x2, y2 = meta["bbox"]
-
-            x1 = max(0, min(int(x1), w - 1))
-            y1 = max(0, min(int(y1), h - 1))
-            x2 = max(1, min(int(x2), w))
-            y2 = max(1, min(int(y2), h))
-
-            if x2 <= x1 or y2 <= y1:
-                _emit(callback,
-                    f"[crop] некорректный bbox для {frame_path.name}: {meta['bbox']}"
-                )
-                continue
-
-            crop = frame[y1:y2, x1:x2]
-
-        if crop is None or crop.size == 0:
-            _emit(callback, f"[crop] пустой crop для {frame_path.name}")
-            continue
-
-        out_path = out_dir / frame_path.name
-        cv2.imwrite(str(out_path), crop)
-        cropped_paths.append(out_path)
-
-    _emit(callback,f"[crop] обрезано кадров: {len(cropped_paths)}")
-    return cropped_paths

@@ -5,7 +5,6 @@ import os.path
 from pathlib import Path
 from faster_whisper import WhisperModel
 from multimodal_summary import build_multimodal_summary
-import cv2
 from PyQt6.QtCore import QRunnable
 import subprocess, sys
 
@@ -13,7 +12,10 @@ import text_processing.audio as audio
 from image_processing.OCR import run_ocr
 from text_processing.LLMsummary import save_summary, summarize_with_llm
 from image_processing.sharpness import select_keyframes
-from image_processing.keyPoints import detect_keypoints_for_images, detect_slide_keypoints, crop_frames_by_keypoints
+# from image_processing.model_keypoints import detect_model_keypoints_for_images, detect_model_slide_keypoints
+from image_processing.keypoints_roi import detect_keypoints_for_images, detect_slide_keypoints
+from utils import crop_frames_by_keypoints
+
 
 
 
@@ -50,12 +52,17 @@ class Main(QRunnable):
             self.signals.result.emit("Статус: 3/7 Отбор ключевых кадров")
             frames_dir = run_dir / "keyframes"
 
-            roi_detector = lambda frame: detect_slide_keypoints(
-                frame_bgr=frame,
-                model_path=self.keypoints_model_path,
-                output_mode=self.keypoints_output_mode,
-            )
-
+            if detect_slide_keypoints is None:
+                from image_processing.model_keypoints import detect_model_slide_keypoints
+                roi_detector = lambda frame: detect_model_slide_keypoints(
+                    frame_bgr=frame,
+                    model_path=self.keypoints_model_path,
+                    output_mode=self.keypoints_output_mode,
+                )
+            else:
+                roi_detector = (
+                    (lambda frame: detect_slide_keypoints)
+                )   
             keyframes = select_keyframes(
                 str(assets.local_video),
                 str(frames_dir),
@@ -66,18 +73,26 @@ class Main(QRunnable):
             frame_paths = [Path(p) for _, p in keyframes]
 
             self.signals.result.emit("Статус: 4/7 Определение ключевых точек слайдов")
-            keypoints = detect_keypoints_for_images(
-                frame_paths,
-                model_path=self.keypoints_model_path,
-                output_mode=self.keypoints_output_mode,
-                image_size=320,
-                backbone="MobileNetV2",
-                dropout=0.2,
-                roi_pad_ratio=0.20,
-                max_side=1200,
-                min_line_len=80,
-                callback=self.print_signal.result.emit
-           )
+            if detect_keypoints_for_images is None:
+                from image_processing.model_keypoints import detect_model_keypoints_for_images
+                keypoints = detect_model_keypoints_for_images(
+                    frame_paths,
+                    model_path=self.keypoints_model_path,
+                    output_mode=self.keypoints_output_mode,
+                    image_size=320,
+                    backbone="MobileNetV2",
+                    dropout=0.2,
+                    roi_pad_ratio=0.20,
+                    max_side=1200,
+                    min_line_len=80,
+                    callback=self.print_signal.result.emit
+                )
+            else:
+                keypoints = detect_keypoints_for_images(
+                    frame_paths,
+                    run_dir,
+                )
+
             keypoints_path = run_dir / "keypoints.json"
             keypoints_path.write_text(json.dumps(keypoints, ensure_ascii=False, indent=2), encoding="utf-8")
 
