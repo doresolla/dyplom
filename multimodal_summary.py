@@ -4,6 +4,8 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+import math
+from collections import Counter
 
 from text_processing.LLMsummary import summarize_with_llm
 
@@ -786,6 +788,67 @@ def render_markdown(
         lines.append("")
 
     return "\n".join(lines).strip() + "\n"
+
+def load_ocr_map(ocr_dir: str | Path | None) -> Dict[str, str]:
+    if ocr_dir is None:
+        return {}
+
+    ocr_dir = Path(ocr_dir)
+    if not ocr_dir.exists():
+        return {}
+
+    result: Dict[str, str] = {}
+    for txt_file in sorted(ocr_dir.glob("*.txt")):
+        if txt_file.name.lower() == "ocr_merged.txt":
+            continue
+        result[txt_file.stem] = _clean_text(txt_file.read_text(encoding="utf-8"))
+    return result
+
+
+def normalize_frames(
+    frame_paths: Optional[Iterable[str | Path]] = None,
+    keyframes: Optional[Iterable[Any]] = None,
+) -> List[Dict[str, Any]]:
+    records: List[Dict[str, Any]] = []
+
+    def add_record(frame_time: Optional[float], frame_path: str | Path) -> None:
+        path_obj = Path(frame_path)
+        time_value = frame_time if frame_time is not None else _extract_time_from_path(path_obj)
+        records.append(
+            {
+                "time": float(time_value) if time_value is not None else 0.0,
+                "path": path_obj,
+                "stem": path_obj.stem,
+            }
+        )
+
+    if keyframes:
+        for item in keyframes:
+            if isinstance(item, dict):
+                add_record(item.get("time"), item.get("path"))
+            elif isinstance(item, (tuple, list)) and len(item) >= 2:
+                add_record(item[0], item[1])
+            elif isinstance(item, (str, Path)):
+                add_record(None, item)
+
+    if not records and frame_paths:
+        for frame_path in frame_paths:
+            add_record(None, frame_path)
+
+    records.sort(key=lambda x: (x["time"], x["path"].name if x["path"] else ""))
+
+    deduped: List[Dict[str, Any]] = []
+    seen: set[Tuple[float, str]] = set()
+    for rec in records:
+        key = (round(float(rec["time"]), 2), str(rec["path"]))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(rec)
+
+    return deduped
+
+
 
 
 # =========================================================

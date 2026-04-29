@@ -8,7 +8,7 @@ from pathlib import Path
 from multimodal_summary import build_multimodal_summary
 from PyQt6.QtCore import QRunnable
 import subprocess, sys
-д
+
 import text_processing.audio as audio
 from image_processing.OCR import run_ocr
 from text_processing.LLMsummary import save_summary, summarize_with_llm

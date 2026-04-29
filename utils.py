@@ -3,7 +3,31 @@ from pathlib import Path
 import numpy as np
 from functools import lru_cache
 
-from typing import Optional, Callable
+from typing import Optional, Callable, Any, List
+import re
+from collections import Counter
+import math
+import os
+
+
+TIME_FROM_NAME_RE = re.compile(r"_(?P<time>\d+(?:\.\d+)?)s(?:\.[^.]+)?$")
+TOKEN_RE = re.compile(r"[A-Za-zА-Яа-яЁё0-9_+#-]{2,}")
+
+RUS_STOPWORDS = {
+    "это", "как", "что", "для", "или", "при", "если", "есть", "так", "его", "ее", "их",
+    "она", "они", "мы", "вы", "ты", "я", "но", "а", "и", "в", "во", "на", "по", "из",
+    "к", "ко", "у", "о", "об", "от", "до", "же", "ли", "не", "да", "ну", "то", "же",
+    "бы", "быть", "вот", "тут", "там", "уже", "еще", "ещё", "только", "когда", "где",
+    "который", "которая", "которые", "такой", "такая", "такие", "этот", "эта", "эти",
+    "the", "and", "for", "with", "this", "that", "from", "into", "then", "than", "are",
+    "was", "were", "have", "has", "had", "not", "you", "your", "our", "but", "can",
+}
+
+TRANSITION_PREFIXES = (
+    "итак", "теперь", "далее", "следующий", "следующая", "перейдем", "перейдём",
+    "рассмотрим", "обсудим", "подведем", "подведём", "сначала", "во-первых", "во вторых",
+    "во-вторых", "наконец", "important", "next", "now", "let us", "moving on",
+)
 
 
 def _emit(callback: Optional[Callable[[str], None]], text: str) -> None:
