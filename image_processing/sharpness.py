@@ -209,19 +209,20 @@ def extract_candidates(
         sc = robust_score(m)
 
         changed = False
-        if prev_roi is not None and is_change(prev_roi, roi_bgr, thr=change_thr):
+        last_candidate = candidates[len(candidates) - 1]
+        current_candidate = FrameInfo(
+            t=t,
+            frame_bgr=frame,
+            roi_bgr=roi_bgr,
+            score=sc,
+            metrics={**m, "changed": changed},
+        )
+        time_dif = last_candidate.t - current_candidate.t
+        if prev_roi is not None and (time_dif > 10) and is_change(prev_roi, roi_bgr, thr=change_thr):
             changed = True
             sc *= 1.15
 
-        candidates.append(
-            FrameInfo(
-                t=t,
-                frame_bgr=frame,
-                roi_bgr=roi_bgr,
-                score=sc,
-                metrics={**m, "changed": changed},
-            )
-        )
+        candidates.append(current_candidate)
 
         prev_roi = roi_bgr
         i += 1

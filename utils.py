@@ -86,8 +86,6 @@ def _order_quad_for_warp(points):
 
     return pts
 
-
-
 def _warp_frame_by_quad( frame, points):
     src = _order_quad_for_warp(points)
 
@@ -116,5 +114,115 @@ def _warp_frame_by_quad( frame, points):
 
     M = cv2.getPerspectiveTransform(src, dst)
     return cv2.warpPerspective(frame, M, (out_w, out_h))
+
+def _clean_text(text: str | None) -> str:
+    if text is None:
+        return ""
+    text = text.replace("\xa0", " ")
+    text = text.replace("\r", "\n")
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def _format_ts(seconds: float) -> str:
+    seconds = max(0, int(round(seconds)))
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = seconds % 60
+    if h > 0:
+        return f"{h:02d}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
+
+
+def _relative_posix(target: Path, base_dir: Path) -> str:
+    rel = os.path.relpath(str(target), str(base_dir))
+    return rel.replace("\\", "/")
+
+
+def _extract_time_from_path(path: Path) -> Optional[float]:
+    match = TIME_FROM_NAME_RE.search(path.name)
+    if match:
+        try:
+            return float(match.group("time"))
+        except Exception:
+            return None
+    return None
+
+
+def _escape_md(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("*", r"\*").replace("_", r"\_")
+
+
+def _truncate(text: str, max_chars: int = 450) -> str:
+    text = _clean_text(text)
+    if len(text) <= max_chars:
+        return text
+    cut = text[:max_chars].rsplit(" ", 1)[0].strip()
+    return cut + " …"
+
+
+def _duration(start: float, end: float) -> float:
+    return max(0.0, float(end) - float(start))
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _split_sentences(text: str) -> List[str]:
+    text = _clean_text(text)
+    if not text:
+        return []
+    parts = re.split(r"(?<=[.!?…])\s+", text)
+    return [p.strip(" -•\n\t") for p in parts if p.strip()]
+
+
+def _tokenize(text: str) -> List[str]:
+    text = _clean_text(text).lower().replace("ё", "е")
+    tokens = TOKEN_RE.findall(text)
+    return [t for t in tokens if t not in RUS_STOPWORDS and len(t) > 1]
+
+
+def _vectorize(text: str) -> Counter:
+    return Counter(_tokenize(text))
+
+
+def _cosine_sim(a: Counter, b: Counter) -> float:
+    if not a or not b:
+        return 0.0
+
+    common = set(a) & set(b)
+    dot = sum(a[t] * b[t] for t in common)
+    norm_a = math.sqrt(sum(v * v for v in a.values()))
+    norm_b = math.sqrt(sum(v * v for v in b.values()))
+    if norm_a <= 1e-12 or norm_b <= 1e-12:
+        return 0.0
+    return float(dot / (norm_a * norm_b))
+
+
+def _transition_cue_score(text: str) -> float:
+    t = _clean_text(text).lower()
+    if not t:
+        return 0.0
+    score = 0.0
+    for prefix in TRANSITION_PREFIXES:
+        if t.startswith(prefix):
+            score += 0.5
+    if re.search(r"\b(итак|теперь|далее|перейд[её]м|следующ|рассмотрим|обсудим)\b", t):
+        score += 0.35
+    if re.search(r":\s*$", t[:50]):
+        score += 0.15
+    return min(score, 1.0)
+
+
+def _top_keywords(text: str, limit: int = 6) -> List[str]:
+    freq = _vectorize(text)
+    if not freq:
+        return []
+    return [token for token, _ in freq.most_common(limit)]
 
 
