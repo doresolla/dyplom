@@ -91,9 +91,9 @@ class Main(QRunnable):
             ocr_path = run_ocr(cropped, run_dir / "ocr")
 
             self.signals.result.emit("Статус: 7/7 Абстрактивная суммаризация")
-            summary_input = transcript_path.read_text(encoding="utf-8")
-            if self.OCR:
-                summary_input += "\n\nТекст со слайдов:\n" + ocr_path.read_text(encoding="utf-8")
+            # summary_input = transcript_path.read_text(encoding="utf-8")
+            # if self.OCR:
+            #     summary_input += "\n\nТекст со слайдов:\n" + ocr_path.read_text(encoding="utf-8")
             # summary = summarize_with_llm(summary_input)
             # summary_path = save_summary(summary, run_dir / f"summary_{self.llm_model}.md")
 

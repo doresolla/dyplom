@@ -14,7 +14,7 @@ except Exception:
     BitsAndBytesConfig = None
 
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Локальные директории моделей.
 # Можно переопределить через переменные окружения QWEN_MODEL_DIR и MISTRAL_MODEL_DIR.
@@ -59,6 +59,12 @@ def _resolve_model_key(model: str | None) -> str:
 
     return DEFAULT_MODEL
 
+
+def count_tokens(text: str, model: str | None = None) -> int:
+    tokenizer, _ = _load_model(model)
+
+    # tokens = tokenizer(text, add_special_tokens=False).input_ids
+    # return len(tokens)
 
 def _resolve_model_path(model: str | None) -> Path:
     return MODELS[_resolve_model_key(model)]
@@ -106,6 +112,23 @@ def _load_model(model: str | None) -> Tuple[AutoTokenizer, AutoModelForCausalLM]
 
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
+
+
+    text = open(r"C:\Users\dondu\PycharmProjects\automatic_conspect33\test\transcript.txt", "r", encoding="utf-8").read()
+    
+    messages = [
+        {"role": "system", "content": "Ты делаешь конспект видеолекции."},
+        {"role": "user", "content": text},
+    ]
+    
+    input_ids = tokenizer.apply_chat_template(
+        messages,
+        tokenize=True,
+        add_generation_prompt=True,
+    )
+    print("Символов:", len(text))
+    print("Токенов:", len(input_ids))
+    print("Символов на токен:", len(text) / len(input_ids))
 
     load_kwargs = {
         "local_files_only": True,
