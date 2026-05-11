@@ -10,8 +10,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 try:
     from transformers import BitsAndBytesConfig
-except Exception:
+    _BNB_IMPORT_ERROR = None
+except Exception as exc:
     BitsAndBytesConfig = None
+    _BNB_IMPORT_ERROR = exc
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -92,6 +94,18 @@ def _load_model(model: str | None) -> Tuple[AutoTokenizer, AutoModelForCausalLM]
     key = _resolve_model_key(model)
     model_path = _resolve_model_path(model)
 
+    print("=" * 60)
+    print("[LLM] model:", key)
+    print("[LLM] model_path:", model_path)
+    print("[LLM] torch:", torch.__version__)
+    print("[LLM] torch.version.cuda:", torch.version.cuda)
+    print("[LLM] cuda available:", torch.cuda.is_available())
+
+    if torch.cuda.is_available():
+        print("[LLM] gpu:", torch.cuda.get_device_name(0))
+        print("[LLM] gpu memory total GB:", round(torch.cuda.get_device_properties(0).total_memory / 1024**3, 2))
+    print("=" * 60)
+
     if _MODEL_CACHE["key"] == key and _MODEL_CACHE["tokenizer"] is not None and _MODEL_CACHE["model"] is not None:
         return _MODEL_CACHE["tokenizer"], _MODEL_CACHE["model"]
 
@@ -99,6 +113,21 @@ def _load_model(model: str | None) -> Tuple[AutoTokenizer, AutoModelForCausalLM]
         raise FileNotFoundError(
             f"Локальная директория модели не найдена: {model_path}\n"
             f"Проверьте MODELS или переменные окружения для модели '{key}'."
+        )
+
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "PyTorch не видит CUDA. Модель будет работать на CPU.\n"
+            "Проверьте установку torch с CUDA:\n"
+            "python -c \"import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())\""
+        )
+
+    if USE_4BIT and BitsAndBytesConfig is None:
+        raise RuntimeError(
+            "Включена 4-bit загрузка, но BitsAndBytesConfig недоступен.\n"
+            f"Ошибка импорта bitsandbytes/transformers: {_BNB_IMPORT_ERROR}\n\n"
+            "Установите зависимости:\n"
+            "python -m pip install -U transformers accelerate bitsandbytes"
         )
 
     unload_model()
@@ -113,59 +142,69 @@ def _load_model(model: str | None) -> Tuple[AutoTokenizer, AutoModelForCausalLM]
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
 
-
-    text = open(r"C:\Users\dondu\PycharmProjects\automatic_conspect33\test\transcript.txt", "r", encoding="utf-8").read()
-    
-    messages = [
-        {"role": "system", "content": "Ты делаешь конспект видеолекции."},
-        {"role": "user", "content": text},
-    ]
-    
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        tokenize=True,
-        add_generation_prompt=True,
-    )
-    print("Символов:", len(text))
-    print("Токенов:", len(input_ids))
-    print("Символов на токен:", len(text) / len(input_ids))
-
     load_kwargs = {
         "local_files_only": True,
         "trust_remote_code": True,
+        "low_cpu_mem_usage": True,
     }
 
-    if torch.cuda.is_available():
-        if USE_4BIT and BitsAndBytesConfig is not None:
-            load_kwargs["device_map"] = "auto"
-            load_kwargs["quantization_config"] = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_quant_type="nf4",
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_compute_dtype=torch.float16,
-            )
-        else:
-            load_kwargs["device_map"] = "auto"
-            load_kwargs["torch_dtype"] = torch.float16
+    if USE_4BIT:
+        # ВАЖНО: {"": 0} принудительно грузит всю модель на GPU.
+        # Если не помещается — будет ошибка, а не тихий уход на CPU.
+        load_kwargs["device_map"] = {"": 0}
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.float16,
+        )
     else:
-        load_kwargs["torch_dtype"] = torch.float32
+        # fp16 7B может не поместиться в 12 GB, поэтому для RTX 3060 лучше USE_4BIT=True.
+        load_kwargs["torch_dtype"] = torch.float16
 
-    model_obj = AutoModelForCausalLM.from_pretrained(str(model_path), **load_kwargs)
+    model_obj = AutoModelForCausalLM.from_pretrained(
+        str(model_path),
+        **load_kwargs,
+    )
 
-    if not torch.cuda.is_available():
-        model_obj.to("cpu")
+    if not USE_4BIT:
+        model_obj = model_obj.to("cuda:0")
 
     model_obj.eval()
+
+    # Диагностика: где реально лежит модель.
+    devices = {}
+    for name, param in model_obj.named_parameters():
+        dev = str(param.device)
+        devices[dev] = devices.get(dev, 0) + param.numel()
+
+    print("[LLM] model parameter devices:")
+    for dev, count in devices.items():
+        print(f"  {dev}: {round(count / 1e9, 3)}B params")
+
+    if not any(dev.startswith("cuda") for dev in devices):
+        raise RuntimeError(
+            "Модель загрузилась не на CUDA. Проверьте torch, bitsandbytes, accelerate и device_map."
+        )
 
     _MODEL_CACHE["key"] = key
     _MODEL_CACHE["tokenizer"] = tokenizer
     _MODEL_CACHE["model"] = model_obj
+
     return tokenizer, model_obj
 
 
+
 def _get_input_device(model_obj: AutoModelForCausalLM) -> torch.device:
-    if hasattr(model_obj, "device"):
-        return model_obj.device
+    try:
+        return model_obj.get_input_embeddings().weight.device
+    except Exception:
+        pass
+
+    for param in model_obj.parameters():
+        if param.device.type == "cuda":
+            return param.device
+
     return next(model_obj.parameters()).device
 
 
@@ -197,6 +236,8 @@ def _generate(
 ) -> str:
     inputs = tokenizer(prompt_text, return_tensors="pt", padding=True, truncation=False)
     input_device = _get_input_device(model_obj)
+    print(input_device)
+    
     inputs = {k: v.to(input_device) for k, v in inputs.items()}
 
     output = model_obj.generate(
@@ -354,3 +395,37 @@ def save_summary(summary: str, out_path: Path) -> Path:
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(summary, encoding="utf-8")
     return out_path
+
+def generate_with_llm(
+    prompt: str,
+    model: str | None = None,
+    system: str | None = None,
+    max_new_tokens: int = 700,
+) -> str:
+    """
+    Универсальный вызов LLM без map-reduce.
+    Нужен для задач вроде:
+    - построить план;
+    - вернуть JSON;
+    - выбрать границу раздела;
+    - классифицировать фрагмент.
+    """
+    if not prompt or not prompt.strip():
+        return ""
+
+    tokenizer, model_obj = _load_model(model)
+
+    system_text = system or SYSTEM_PROMPT
+
+    prompt_text = _build_chat_prompt(
+        tokenizer=tokenizer,
+        system=system_text,
+        user=prompt,
+    )
+
+    return _generate(
+        tokenizer=tokenizer,
+        model_obj=model_obj,
+        prompt_text=prompt_text,
+        max_new_tokens=max_new_tokens,
+    )
