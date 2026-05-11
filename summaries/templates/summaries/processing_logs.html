@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Логи обработки{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Логи обработки: {{ note.title }}</h1>
+    <p><span class="status {{ note.status }}">{{ note.get_status_display }}</span> {{ note.progress }}%</p>
+    <div class="progress"><span style="width: {{ note.progress }}%"></span></div>
+</div>
+<div class="card" style="margin-top:18px;">
+    <table>
+        <thead><tr><th>Время</th><th>Сообщение</th></tr></thead>
+        <tbody>
+        {% for log in logs %}
+            <tr><td>{{ log.created_at|date:'d.m.Y H:i:s' }}</td><td style="white-space:pre-wrap;">{{ log.message }}</td></tr>
+        {% empty %}
+            <tr><td colspan="2">Логов пока нет.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Загрузка видео{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Загрузить видеолекцию</h1>
+    <p class="muted">После загрузки обработка будет запущена в фоне. Статус можно смотреть в личном кабинете.</p>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="field">
+                <label><strong>{{ field.label }}</strong></label>
+                {{ field }}
+                {% if field.errors %}<div style="color:#b91c1c;">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit">Запустить обработку</button>
+    </form>
+</div>
+{% endblock %}

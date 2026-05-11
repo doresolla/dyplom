@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<div class="card" style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap;">
+    <div>
+        <h1>Уведомления</h1>
+        <p class="muted">Здесь появляются сообщения о завершении или ошибках обработки.</p>
+    </div>
+    <form method="post">{% csrf_token %}<button type="submit">Отметить все прочитанными</button></form>
+</div>
+
+<div style="margin-top:18px;" class="grid">
+    {% for item in notifications %}
+        <div class="card">
+            <h2>{{ item.title }}</h2>
+            <p class="muted">{{ item.created_at|date:'d.m.Y H:i' }}{% if not item.is_read %} · новое{% endif %}</p>
+            <p>{{ item.message }}</p>
+            {% if item.note %}<a class="btn secondary" href="{{ item.note.get_absolute_url }}">Открыть конспект</a>{% endif %}
+        </div>
+    {% empty %}
+        <div class="card"><p>Уведомлений пока нет.</p></div>
+    {% endfor %}
+</div>
+{% endblock %}

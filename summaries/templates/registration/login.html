@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<div class="card" style="max-width:480px; margin:0 auto;">
+    <h1>Вход</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="field">
+            <label>Логин</label>
+            <input class="form-control" type="text" name="username" autofocus required>
+        </div>
+        <div class="field">
+            <label>Пароль</label>
+            <input class="form-control" type="password" name="password" required>
+        </div>
+        {% if form.errors %}<p style="color:#b91c1c;">Неверный логин или пароль.</p>{% endif %}
+        <button type="submit">Войти</button>
+    </form>
+    <p class="muted" style="margin-top:16px;">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+</div>
+{% endblock %}

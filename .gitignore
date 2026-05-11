@@ -15,3 +15,5 @@ __pycache__/
 *.safetensors
 models/
 runs/
+media/
+summaries/migrations/

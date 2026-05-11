@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Конспекты видеолекций{% endblock %}</title>
+    <style>
+        :root { --bg: #f6f7fb; --card: #fff; --text: #182033; --muted: #6b7280; --accent: #2f6fed; --bad: #b91c1c; --ok: #047857; --line: #e5e7eb; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); }
+        a { color: var(--accent); text-decoration: none; }
+        .container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+        header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+        nav { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .brand { font-weight: 800; font-size: 18px; }
+        .nav-links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .btn, button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; padding: 10px 14px; background: var(--accent); color: #fff; font-weight: 650; cursor: pointer; }
+        .btn.secondary { background: #eef2ff; color: var(--accent); }
+        .btn.danger { background: #fee2e2; color: var(--bad); }
+        main { padding: 28px 0 48px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04); }
+        .muted { color: var(--muted); }
+        .status { display: inline-flex; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; background: #f3f4f6; color: #374151; }
+        .status.done { background: #dcfce7; color: var(--ok); }
+        .status.error { background: #fee2e2; color: var(--bad); }
+        .status.processing, .status.queued { background: #dbeafe; color: #1d4ed8; }
+        .progress { height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+        .progress > span { display: block; height: 100%; background: var(--accent); }
+        .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+        .field { margin: 14px 0; }
+        .messages { margin-bottom: 18px; }
+        .message { padding: 12px 14px; border-radius: 12px; background: #ecfeff; border: 1px solid #a5f3fc; }
+        .summary-content { line-height: 1.65; }
+        .summary-content img { max-width: 100%; border-radius: 12px; }
+        .pdf-viewer { width: 100%; height: min(78vh, 920px); min-height: 640px; border: 1px solid var(--line); border-radius: 14px; background: #f9fafb; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+        .topbar-form { display: inline; }
+    </style>
+</head>
+<body>
+<header>
+    <nav class="container">
+        <a class="brand" href="{% url 'public_notes' %}">Мультимодальные конспекты</a>
+        <div class="nav-links">
+            <a href="{% url 'public_notes' %}">Общая база</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'dashboard' %}">Личный кабинет</a>
+                <a href="{% url 'upload_note' %}">Загрузить видео</a>
+                <a href="{% url 'notifications' %}">Уведомления{% if unread_notifications_count %} ({{ unread_notifications_count }}){% endif %}</a>
+                <form class="topbar-form" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn secondary" type="submit">Выйти</button></form>
+            {% else %}
+                <a class="btn secondary" href="{% url 'login' %}">Войти</a>
+                <a class="btn" href="{% url 'register' %}">Регистрация</a>
+            {% endif %}
+        </div>
+    </nav>
+</header>
+<main class="container">
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}
+        </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

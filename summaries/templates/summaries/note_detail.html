@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}{{ note.title }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>{{ note.title }}</h1>
+    <p class="muted">Автор: {{ note.owner.username }} · создан: {{ note.created_at|date:'d.m.Y H:i' }}</p>
+    <p><span class="status {{ note.status }}">{{ note.get_status_display }}</span> {{ note.status_message }}</p>
+    <div class="progress"><span style="width: {{ note.progress }}%"></span></div>
+    <p>Средняя оценка: {% if note.avg_score %}{{ note.avg_score|floatformat:2 }} / 5{% else %}пока нет{% endif %} · отзывов: {{ note.ratings_total }}</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        {% if note.summary_pdf_file %}<a class="btn" href="{{ note.summary_pdf_file.url }}" target="_blank">Открыть PDF</a>{% endif %}
+        {% if note.summary_pdf_file %}<a class="btn secondary" href="{{ note.summary_pdf_file.url }}" download>Скачать PDF</a>{% endif %}
+        {% if note.summary_file %}<a class="btn secondary" href="{{ note.summary_file.url }}">Скачать markdown</a>{% endif %}
+        {% if user.is_authenticated and user.id == note.owner_id %}<a class="btn secondary" href="{% url 'processing_logs' note.pk %}">Логи обработки</a>{% endif %}
+    </div>
+</div>
+
+{% if note.status == 'done' %}
+    <div class="card" style="margin-top:18px;">
+        <h2>Итоговый конспект</h2>
+        {% if note.summary_pdf_file %}
+            <p class="muted">PDF-версия используется как основной итоговый конспект. Изображения из markdown встраиваются в PDF при завершении пайплайна.</p>
+            <iframe class="pdf-viewer" src="{{ note.summary_pdf_file.url }}#toolbar=1&navpanes=0" title="PDF-конспект: {{ note.title }}"></iframe>
+        {% elif html_summary %}
+            <p class="muted">PDF еще не создан, поэтому временно показан markdown-вариант.</p>
+            <div class="summary-content">{{ html_summary }}</div>
+        {% else %}
+            <p class="muted">Файл конспекта найден, но текст не удалось прочитать. Попробуйте скачать markdown-файл выше.</p>
+        {% endif %}
+    </div>
+
+    <div class="grid" style="margin-top:18px;">
+        <div class="card">
+            <h2>Оценить результат</h2>
+            {% if user.is_authenticated %}
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="field"><label>Оценка от 1 до 5</label>{{ rating_form.score }}</div>
+                    <div class="field"><label>Комментарий</label>{{ rating_form.comment }}</div>
+                    <button type="submit">Сохранить оценку</button>
+                </form>
+            {% else %}
+                <p><a href="{% url 'login' %}">Войдите</a>, чтобы поставить оценку.</p>
+            {% endif %}
+        </div>
+        <div class="card">
+            <h2>Отзывы</h2>
+            {% for rating in ratings %}
+                <p><strong>{{ rating.user.username }}</strong>: {{ rating.score }} / 5<br>{{ rating.comment|default:'Без комментария' }}</p>
+            {% empty %}
+                <p class="muted">Пока нет отзывов.</p>
+            {% endfor %}
+        </div>
+    </div>
+{% elif note.status == 'error' %}
+    <div class="card" style="margin-top:18px;">
+        <h2>Ошибка</h2>
+        <p style="color:#b91c1c; white-space:pre-wrap;">{{ note.error_message }}</p>
+    </div>
+{% else %}
+    <div class="card" style="margin-top:18px;">
+        <p>Конспект еще формируется. Обновите страницу позже или смотрите статус в личном кабинете.</p>
+    </div>
+{% endif %}
+{% endblock %}

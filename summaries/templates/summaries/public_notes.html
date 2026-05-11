@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Общая база конспектов{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Общая база конспектов</h1>
+    <p class="muted">Здесь отображаются все готовые конспекты. Они хранятся у владельцев в личном кабинете, но доступны для просмотра всем пользователям.</p>
+    <form method="get" style="display:flex; gap:10px; margin-top:16px;">
+        <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Поиск по названию или тексту конспекта">
+        <button type="submit">Найти</button>
+    </form>
+</div>
+
+<div class="grid" style="margin-top:18px;">
+    {% for note in page_obj %}
+        <article class="card">
+            <h2><a href="{{ note.get_absolute_url }}">{{ note.title }}</a></h2>
+            <p class="muted">Автор: {{ note.owner.username }} · {{ note.created_at|date:'d.m.Y H:i' }}</p>
+            <p>Оценка: {% if note.avg_score %}{{ note.avg_score|floatformat:2 }} / 5{% else %}пока нет{% endif %} · отзывов: {{ note.ratings_total }}</p>
+            <a class="btn secondary" href="{{ note.get_absolute_url }}">Открыть конспект</a>
+            {% if note.summary_pdf_file %}<a class="btn secondary" href="{{ note.summary_pdf_file.url }}" target="_blank" style="margin-left:8px;">PDF</a>{% endif %}
+        </article>
+    {% empty %}
+        <div class="card"><p>Пока нет готовых конспектов.</p></div>
+    {% endfor %}
+</div>
+
+{% if page_obj.has_other_pages %}
+    <div class="card" style="margin-top:18px;">
+        {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}&q={{ query }}">Назад</a>{% endif %}
+        <span class="muted">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}&q={{ query }}">Вперед</a>{% endif %}
+    </div>
+{% endif %}
+{% endblock %}
