@@ -8,7 +8,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
-from text_processing.LLMsummary import summarize_with_llm
+from text_processing.LLMsummary import summarize_with_llm, generate_with_llm
 from utils import _emit
 
 
@@ -332,6 +332,374 @@ def normalize_frames(
     return deduped
 
 
+def _softmax(scores: List[float], temperature: float = 0.35) -> List[float]:
+    """
+    Преобразует набор оценок похожести в вероятности.
+    Чем меньше temperature, тем увереннее распределение.
+    """
+    if not scores:
+        return []
+
+    temperature = max(1e-6, float(temperature))
+
+    scaled = [s / temperature for s in scores]
+    max_s = max(scaled)
+
+    exps = [math.exp(s - max_s) for s in scaled]
+    total = sum(exps)
+
+    if total <= 1e-12:
+        return [1.0 / len(scores)] * len(scores)
+
+    return [x / total for x in exps]
+
+
+def _normalize_plan_sections(plan: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Поддерживает оба варианта:
+    1. ["Раздел 1", "Раздел 2"]
+    2. [{"title": "...", "description": "..."}]
+    """
+    sections: List[Dict[str, Any]] = []
+
+    for item in plan:
+        if isinstance(item, str):
+            title = _clean_text(item)
+            description = ""
+
+        elif isinstance(item, dict):
+            title = _clean_text(
+                item.get("title")
+                or item.get("name")
+                or item.get("section")
+                or ""
+            )
+            description = _clean_text(
+                item.get("description")
+                or item.get("summary")
+                or ""
+            )
+
+        else:
+            title = _clean_text(str(item))
+            description = ""
+
+        if not title:
+            continue
+
+        sections.append(
+            {
+                "index": len(sections),
+                "title": title,
+                "description": description,
+            }
+        )
+
+    return sections
+
+
+def build_section_profiles(plan: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Профиль раздела нужен для сравнения текста окна с пунктом плана.
+    """
+    sections = _normalize_plan_sections(plan)
+
+    profiles: List[Dict[str, Any]] = []
+
+    for section in sections:
+        title = section["title"]
+        description = section.get("description", "")
+
+        profile_text = _clean_text(f"{title}. {description}")
+
+        profiles.append(
+            {
+                "index": section["index"],
+                "title": title,
+                "description": description,
+                "profile_text": profile_text,
+                "vector": _vectorize(profile_text),
+            }
+        )
+
+    return profiles
+
+
+def _make_window_from_items(
+    transcript_items: List[Dict[str, Any]],
+    item_start: int,
+    item_end: int,
+    index: int = 1,
+) -> Dict[str, Any]:
+    """
+    Собирает окно текста из ASR-фрагментов.
+    """
+    item_start = max(0, int(item_start))
+    item_end = min(len(transcript_items) - 1, int(item_end))
+
+    block = transcript_items[item_start:item_end + 1]
+
+    text = _clean_text(" ".join(item["text"] for item in block))
+
+    return {
+        "index": index,
+        "item_start": item_start,
+        "item_end": item_end,
+        "start": float(block[0]["start"]),
+        "end": float(block[-1]["end"]),
+        "center": (float(block[0]["start"]) + float(block[-1]["end"])) / 2.0,
+        "text": text,
+        "vector": _vectorize(text),
+        "cue": _transition_score(block[0]["text"]),
+    }
+
+
+def estimate_section_membership(
+    text: str,
+    section_profiles: List[Dict[str, Any]],
+    position_ratio: float | None = None,
+    semantic_weight: float = 0.85,
+    position_weight: float = 0.15,
+    temperature: float = 0.35,
+) -> Dict[str, Any]:
+    """
+    Оценивает вероятность принадлежности текста к каждому разделу плана.
+
+    position_ratio — положение окна внутри лекции от 0 до 1.
+    Это слабый prior, чтобы ранние окна чуть больше тяготели к ранним разделам,
+    а поздние — к поздним.
+    """
+    if not section_profiles:
+        return {
+            "section_probs": [],
+            "section_scores": [],
+            "best_section_idx": None,
+            "best_section_title": "",
+            "confidence": 0.0,
+            "margin": 0.0,
+            "ambiguous": True,
+        }
+
+    text_vec = _vectorize(text)
+    k = len(section_profiles)
+
+    scores: List[float] = []
+
+    for j, profile in enumerate(section_profiles):
+        semantic_score = _cosine_sim(text_vec, profile["vector"])
+
+        if position_ratio is not None and k > 1:
+            expected_pos = j / (k - 1)
+            position_score = max(0.0, 1.0 - abs(position_ratio - expected_pos))
+        else:
+            position_score = 0.0
+
+        score = semantic_weight * semantic_score + position_weight * position_score
+        scores.append(score)
+
+    probs = _softmax(scores, temperature=temperature)
+
+    best_idx = max(range(k), key=lambda i: probs[i])
+    sorted_probs = sorted(probs, reverse=True)
+
+    confidence = sorted_probs[0]
+    second = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
+    margin = confidence - second
+
+    ambiguous = confidence < 0.45 or margin < 0.15
+
+    return {
+        "section_probs": probs,
+        "section_scores": scores,
+        "best_section_idx": best_idx,
+        "best_section_title": section_profiles[best_idx]["title"],
+        "confidence": confidence,
+        "margin": margin,
+        "ambiguous": ambiguous,
+    }
+
+
+def _window_position_ratio(
+    window: Dict[str, Any],
+    lecture_start: float,
+    lecture_end: float,
+) -> float:
+    duration = max(1e-6, lecture_end - lecture_start)
+    center = float(window["center"])
+    return max(0.0, min(1.0, (center - lecture_start) / duration))
+
+
+def _find_middle_split_item(
+    transcript_items: List[Dict[str, Any]],
+    item_start: int,
+    item_end: int,
+) -> int:
+    """
+    Ищет ASR-фрагмент около середины окна по времени.
+    """
+    start_time = float(transcript_items[item_start]["start"])
+    end_time = float(transcript_items[item_end]["end"])
+    mid_time = (start_time + end_time) / 2.0
+
+    best_i = item_start
+    best_gap = 1e18
+
+    for i in range(item_start, item_end):
+        candidate_time = float(transcript_items[i]["end"])
+        gap = abs(candidate_time - mid_time)
+
+        if gap < best_gap:
+            best_gap = gap
+            best_i = i
+
+    return best_i
+
+
+def classify_window_with_recursive_split(
+    transcript_items: List[Dict[str, Any]],
+    item_start: int,
+    item_end: int,
+    section_profiles: List[Dict[str, Any]],
+    lecture_start: float,
+    lecture_end: float,
+    min_split_sec: float = 10.0,
+    min_items: int = 2,
+    max_depth: int = 4,
+    depth: int = 0,
+) -> List[Dict[str, Any]]:
+    """
+    Классифицирует окно.
+    Если принадлежность к разделу неоднозначна — делит окно и классифицирует части.
+    """
+    window = _make_window_from_items(
+        transcript_items=transcript_items,
+        item_start=item_start,
+        item_end=item_end,
+    )
+
+    position_ratio = _window_position_ratio(
+        window=window,
+        lecture_start=lecture_start,
+        lecture_end=lecture_end,
+    )
+
+    result = estimate_section_membership(
+        text=window["text"],
+        section_profiles=section_profiles,
+        position_ratio=position_ratio,
+    )
+
+    window.update(result)
+
+    duration = _duration(window["start"], window["end"])
+    item_count = item_end - item_start + 1
+
+    can_split = (
+        window["ambiguous"]
+        and depth < max_depth
+        and duration >= min_split_sec * 2
+        and item_count > min_items
+    )
+
+    if not can_split:
+        return [window]
+
+    split_item = _find_middle_split_item(
+        transcript_items=transcript_items,
+        item_start=item_start,
+        item_end=item_end,
+    )
+
+    if split_item <= item_start or split_item >= item_end:
+        return [window]
+
+    left = classify_window_with_recursive_split(
+        transcript_items=transcript_items,
+        item_start=item_start,
+        item_end=split_item,
+        section_profiles=section_profiles,
+        lecture_start=lecture_start,
+        lecture_end=lecture_end,
+        min_split_sec=min_split_sec,
+        min_items=min_items,
+        max_depth=max_depth,
+        depth=depth + 1,
+    )
+
+    right = classify_window_with_recursive_split(
+        transcript_items=transcript_items,
+        item_start=split_item + 1,
+        item_end=item_end,
+        section_profiles=section_profiles,
+        lecture_start=lecture_start,
+        lecture_end=lecture_end,
+        min_split_sec=min_split_sec,
+        min_items=min_items,
+        max_depth=max_depth,
+        depth=depth + 1,
+    )
+
+    return left + right
+
+
+def classify_text_windows_by_plan(
+    transcript_items: List[Dict[str, Any]],
+    windows: List[Dict[str, Any]],
+    plan: List[Any],
+    min_split_sec: float = 10.0,
+    callback: Optional[Callable[[str], None]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Второй шаг пайплайна:
+    - берёт окна текста;
+    - оценивает вероятность принадлежности каждого окна к каждому разделу;
+    - неоднозначные окна делит;
+    - возвращает классифицированные окна.
+    """
+    if not transcript_items:
+        return []
+
+    if not windows:
+        return []
+
+    section_profiles = build_section_profiles(plan)
+
+    if not section_profiles:
+        return windows
+
+    lecture_start = float(transcript_items[0]["start"])
+    lecture_end = float(transcript_items[-1]["end"])
+
+    classified: List[Dict[str, Any]] = []
+
+    _emit(callback, "[summary] классификация текстовых окон по разделам плана")
+
+    for window in windows:
+        parts = classify_window_with_recursive_split(
+            transcript_items=transcript_items,
+            item_start=int(window["item_start"]),
+            item_end=int(window["item_end"]),
+            section_profiles=section_profiles,
+            lecture_start=lecture_start,
+            lecture_end=lecture_end,
+            min_split_sec=min_split_sec,
+        )
+
+        classified.extend(parts)
+
+    for idx, window in enumerate(classified, start=1):
+        window["index"] = idx
+
+    ambiguous_count = sum(1 for w in classified if w.get("ambiguous"))
+
+    _emit(
+        callback,
+        f"[summary] классифицировано окон: {len(classified)}, "
+        f"неоднозначных после деления: {ambiguous_count}"
+    )
+
+    return classified
+
 # =========================================================
 # 1. ГРУБЫЙ ПЛАН ЛЕКЦИИ ПО ТРАНСКРИПТУ
 # =========================================================
@@ -344,91 +712,121 @@ def _desired_section_count(total_duration_sec: float) -> int:
     return max(1, min(12, int(round(total_duration_sec / 180.0)) + 1))
 
 
-# def build_lecture_plan(
-#     transcript_items: List[Dict[str, Any]],
-#     model: str | None = None,
-#     callback: Optional[Callable[[str], None]] = None,
-# ) -> List[str]:
-#     if not transcript_items:
-#         return ["Раздел 1"]
-
-#     full_text = _clean_text(" ".join(item["text"] for item in transcript_items))
-#     if not full_text:
-#         return ["Раздел 1"]
-
-#     total_duration_sec = max(float(item["end"]) for item in transcript_items)
-#     target_sections = _desired_section_count(total_duration_sec)
-
-#     prompt = (
-#         "Построй грубый тематический план видеолекции по транскрипту.\n\n"
-#         f"Желательное число разделов: {target_sections}.\n"
-#         "Не выдумывай темы, которых нет в тексте.\n"
-#         "Названия должны быть короткими: 3-8 слов.\n"
-#         "Верни строго JSON-массив строк, без пояснений.\n\n"
-#         f"Транскрипт:\n{full_text[:16000]}"
-#     )
-
-#     try:
-#         _emit(callback, "[summary] построение грубого плана лекции")
-#         raw = summarize_with_llm(prompt, model=model)
-#         parsed = _parse_json_list(raw)
-
-#         if parsed:
-#             titles = [_clean_text(str(x)) for x in parsed if _clean_text(str(x))]
-#             titles = [x[:90] for x in titles]
-#             titles = [x for i, x in enumerate(titles) if x not in titles[:i]]
-
-#             if titles:
-#                 return titles[:12]
-
-#     except Exception as exc:
-#         _emit(callback, f"[summary] LLM-план не построен, fallback: {exc}")
-
-#     keywords = _top_keywords(full_text, limit=target_sections)
-
-#     if not keywords:
-#         return [f"Раздел {i + 1}" for i in range(target_sections)]
-
-#     return [f"Тема: {kw}" for kw in keywords]
-
-
-def build_lecture_plan(
+def _compact_transcript_for_plan(
     transcript_items: List[Dict[str, Any]],
-    model: str | None = None,
-    callback: Optional[Callable[[str], None]] = None,
-    use_llm: bool = False,
-) -> List[str]:
+    max_chars_per_block: int = 900,
+    target_blocks: int = 10,
+) -> str:
     """
-    Быстрый грубый план лекции.
+    Делает компактное представление транскрипта для построения плана.
 
-    ВАЖНО:
-    По умолчанию LLM здесь НЕ используется, потому что грубый план по длинному
-    транскрипту сильно нагружает ОЗУ/VRAM.
-
-    План строится статистически:
-    - делим лекцию на несколько крупных временных частей;
-    - для каждой части берём ключевые слова;
-    - получаем грубые названия разделов.
+    Не пытаемся передать LLM весь транскрипт.
+    Передаём последовательные блоки:
+    [00:00–01:20] текст...
+    [01:20–02:40] текст...
     """
     if not transcript_items:
-        return ["Раздел 1"]
+        return ""
 
-    full_text = _clean_text(" ".join(item["text"] for item in transcript_items))
-    if not full_text:
-        return ["Раздел 1"]
+    n = len(transcript_items)
+    target_blocks = max(1, min(target_blocks, n))
+    chunk_size = max(1, math.ceil(n / target_blocks))
 
-    total_duration_sec = max(float(item["end"]) for item in transcript_items)
-    target_sections = _desired_section_count(total_duration_sec)
+    blocks = []
 
-    _emit(
-        callback,
-        "[summary] быстрый грубый план без LLM, чтобы не перегружать ОЗУ"
-    )
+    for i in range(0, n, chunk_size):
+        chunk = transcript_items[i:i + chunk_size]
+        if not chunk:
+            continue
+
+        start = float(chunk[0]["start"])
+        end = float(chunk[-1]["end"])
+        text = _clean_text(" ".join(item["text"] for item in chunk))
+        text = _truncate(text, max_chars_per_block)
+
+        blocks.append(
+            f"[{_format_ts(start)}–{_format_ts(end)}]\n{text}"
+        )
+
+    return "\n\n".join(blocks)
+
+
+def _normalize_plan_items(raw_items: list) -> List[Dict[str, Any]]:
+    """
+    Приводит ответ LLM к единому виду:
+    [
+        {"index": 1, "title": "...", "description": "..."},
+        ...
+    ]
+    """
+    result: List[Dict[str, Any]] = []
+    seen_titles = set()
+
+    for item in raw_items:
+        title = ""
+        description = ""
+
+        if isinstance(item, str):
+            title = item
+            description = ""
+
+        elif isinstance(item, dict):
+            title = (
+                item.get("title")
+                or item.get("name")
+                or item.get("section")
+                or ""
+            )
+            description = item.get("description") or item.get("summary") or ""
+
+        title = _clean_text(str(title))
+        description = _clean_text(str(description))
+
+        if not title:
+            continue
+
+        title = title.strip(" -—:;.0123456789")
+        title = title[:90]
+
+        key = title.lower().replace("ё", "е")
+
+        if key in seen_titles:
+            continue
+
+        seen_titles.add(key)
+
+        result.append(
+            {
+                "index": len(result) + 1,
+                "title": title,
+                "description": description[:350],
+            }
+        )
+
+    return result
+
+
+def _fallback_lecture_plan(
+    transcript_items: List[Dict[str, Any]],
+    target_sections: int,
+) -> List[Dict[str, Any]]:
+    """
+    Запасной вариант без LLM.
+    Даёт не идеальные названия, но пайплайн не падает.
+    """
+    if not transcript_items:
+        return [
+            {
+                "index": 1,
+                "title": "Раздел 1",
+                "description": "",
+            }
+        ]
 
     n = len(transcript_items)
     chunk_size = max(1, math.ceil(n / target_sections))
 
-    titles: List[str] = []
+    plan: List[Dict[str, Any]] = []
 
     for i in range(0, n, chunk_size):
         chunk = transcript_items[i:i + chunk_size]
@@ -439,23 +837,135 @@ def build_lecture_plan(
         if keywords:
             title = " / ".join(keywords)
         else:
-            title = f"Раздел {len(titles) + 1}"
+            title = f"Раздел {len(plan) + 1}"
 
-        titles.append(title)
+        plan.append(
+            {
+                "index": len(plan) + 1,
+                "title": title,
+                "description": _truncate(chunk_text, 250),
+            }
+        )
 
-    # Убираем дубли и пустые заголовки
-    clean_titles: List[str] = []
-    for title in titles:
-        title = _clean_text(title)
-        if not title:
-            continue
-        if title not in clean_titles:
-            clean_titles.append(title)
+    return plan[:12]
 
-    if clean_titles:
-        return clean_titles[:12]
 
-    return [f"Раздел {i + 1}" for i in range(target_sections)]
+def build_lecture_plan(
+    transcript_items: List[Dict[str, Any]],
+    model: str | None = None,
+    callback: Optional[Callable[[str], None]] = None,
+    use_llm: bool = True,
+) -> List[Dict[str, Any]]:
+    """
+    Строит тематический план лекции.
+
+    Возвращает не просто список строк, а список объектов:
+    [
+        {
+            "index": 1,
+            "title": "...",
+            "description": "..."
+        }
+    ]
+
+    title нужен для вывода в конспект.
+    description потом пригодится для оценки принадлежности текста к разделу.
+    """
+    if not transcript_items:
+        return [
+            {
+                "index": 1,
+                "title": "Раздел 1",
+                "description": "",
+            }
+        ]
+
+    full_text = _clean_text(" ".join(item["text"] for item in transcript_items))
+
+    if not full_text:
+        return [
+            {
+                "index": 1,
+                "title": "Раздел 1",
+                "description": "",
+            }
+        ]
+
+    total_duration_sec = max(float(item["end"]) for item in transcript_items)
+    target_sections = _desired_section_count(total_duration_sec)
+
+    if not use_llm:
+        _emit(callback, "[summary] построение плана без LLM")
+        return _fallback_lecture_plan(
+            transcript_items=transcript_items,
+            target_sections=target_sections,
+        )
+
+    compact_transcript = _compact_transcript_for_plan(
+        transcript_items=transcript_items,
+        max_chars_per_block=900,
+        target_blocks=max(6, target_sections * 2),
+    )
+
+    prompt = f"""
+Построй тематический план видеолекции по транскрипту.
+
+Требования:
+- разделы должны идти в порядке лекции;
+- желательное число разделов: {target_sections};
+- допустимое число разделов: от {max(1, target_sections - 2)} до {min(12, target_sections + 3)};
+- названия разделов должны быть короткими: 3–8 слов;
+- не добавляй темы, которых нет в транскрипте;
+- не делай отдельный раздел для короткой фразы-перехода;
+- каждый раздел должен отражать крупный смысловой блок лекции;
+- description — 1 короткое предложение о содержании раздела.
+
+Верни строго JSON-массив объектов без пояснений:
+
+[
+  {{
+    "title": "Название раздела",
+    "description": "Краткое описание раздела"
+  }}
+]
+
+Транскрипт:
+{compact_transcript}
+""".strip()
+
+    try:
+        _emit(callback, "[summary] построение плана лекции с помощью LLM")
+
+        raw = generate_with_llm(
+            prompt=prompt,
+            model=model,
+            system=(
+                "Ты строишь учебный план видеолекции. "
+                "Пиши по-русски. "
+                "Не добавляй факты, которых нет в транскрипте. "
+                "Возвращай только валидный JSON."
+            ),
+            max_new_tokens=800,
+        )
+
+        parsed = _parse_json_list(raw)
+
+        if parsed:
+            plan = _normalize_plan_items(parsed)
+
+            if plan:
+                return plan[:12]
+
+        _emit(callback, "[summary] LLM вернула некорректный план, fallback")
+
+    except Exception as exc:
+        _emit(callback, f"[summary] план через LLM не построен, fallback: {exc}")
+
+    return _fallback_lecture_plan(
+        transcript_items=transcript_items,
+        target_sections=target_sections,
+    )
+
 
 # =========================================================
 # 2. ОКНА ТЕКСТА, А НЕ ОТДЕЛЬНЫЕ ПРЕДЛОЖЕНИЯ
@@ -525,6 +1035,232 @@ def build_text_windows(
 
     return windows
 
+def _normalize_probs(probs: List[float], n: int) -> List[float]:
+    if not probs or len(probs) != n:
+        return [1.0 / n] * n
+
+    cleaned = [max(1e-9, float(p)) for p in probs]
+    total = sum(cleaned)
+
+    if total <= 1e-12:
+        return [1.0 / n] * n
+
+    return [p / total for p in cleaned]
+
+
+def _window_section_probs(
+    window: Dict[str, Any],
+    n_sections: int,
+) -> List[float]:
+    """
+    Достаёт вероятности принадлежности окна к разделам.
+
+    Если section_probs нет, строит грубое распределение по best_section_idx.
+    """
+    probs = window.get("section_probs")
+
+    if probs and len(probs) == n_sections:
+        return _normalize_probs(probs, n_sections)
+
+    best_idx = window.get("best_section_idx")
+
+    result = [0.05 / max(1, n_sections - 1)] * n_sections
+
+    if best_idx is None:
+        return [1.0 / n_sections] * n_sections
+
+    best_idx = int(best_idx)
+
+    if 0 <= best_idx < n_sections:
+        result[best_idx] = 0.95
+
+    return _normalize_probs(result, n_sections)
+
+
+def decode_ordered_section_labels(
+    classified_windows: List[Dict[str, Any]],
+    n_sections: int,
+    force_all_sections: bool = True,
+) -> List[int]:
+    """
+    Сглаживает последовательность разделов.
+
+    Разрешённые переходы:
+    - остаться в текущем разделе;
+    - перейти к следующему разделу.
+
+    Это защищает от скачков вида:
+    0 -> 1 -> 3 -> 2.
+    """
+    if not classified_windows:
+        return []
+
+    if n_sections <= 1:
+        return [0] * len(classified_windows)
+
+    n_windows = len(classified_windows)
+
+    if n_windows < n_sections:
+        force_all_sections = False
+
+    neg_inf = -1e18
+
+    dp = [[neg_inf] * n_sections for _ in range(n_windows)]
+    parent = [[-1] * n_sections for _ in range(n_windows)]
+
+    first_probs = _window_section_probs(classified_windows[0], n_sections)
+
+    if force_all_sections:
+        # Считаем, что лекция начинается с первого пункта плана.
+        dp[0][0] = math.log(max(first_probs[0], 1e-9))
+    else:
+        for j in range(n_sections):
+            # Небольшой штраф за старт не с первого раздела.
+            dp[0][j] = math.log(max(first_probs[j], 1e-9)) - 0.4 * j
+
+    for i in range(1, n_windows):
+        probs = _window_section_probs(classified_windows[i], n_sections)
+
+        for j in range(n_sections):
+            emission = math.log(max(probs[j], 1e-9))
+
+            candidates = []
+
+            # Остаться в текущем разделе.
+            candidates.append((dp[i - 1][j] + 0.08, j))
+
+            # Перейти из предыдущего раздела в следующий.
+            if j > 0:
+                candidates.append((dp[i - 1][j - 1] - 0.02, j - 1))
+
+            best_score, best_prev = max(candidates, key=lambda x: x[0])
+
+            dp[i][j] = best_score + emission
+            parent[i][j] = best_prev
+
+    if force_all_sections:
+        last_state = n_sections - 1
+    else:
+        last_state = max(range(n_sections), key=lambda j: dp[-1][j])
+
+    labels = [last_state]
+
+    for i in range(n_windows - 1, 0, -1):
+        last_state = parent[i][last_state]
+
+        if last_state < 0:
+            last_state = labels[-1]
+
+        labels.append(last_state)
+
+    labels.reverse()
+    return labels
+
+def _dominant_label_for_segment(
+    segment: Dict[str, Any],
+    windows: List[Dict[str, Any]],
+    labels: List[int],
+) -> int:
+    """
+    Определяет главный label внутри сегмента.
+    Используется после merge_short_segments, когда сегмент мог объединить
+    несколько маленьких кусков.
+    """
+    weights = Counter()
+
+    seg_start = float(segment["start"])
+    seg_end = float(segment["end"])
+
+    for window, label in zip(windows, labels):
+        w_start = float(window["start"])
+        w_end = float(window["end"])
+
+        overlap = max(0.0, min(seg_end, w_end) - max(seg_start, w_start))
+
+        if overlap > 0:
+            weights[int(label)] += overlap
+
+    if not weights:
+        return 0
+
+    return weights.most_common(1)[0][0]
+
+
+def build_segments_from_classified_windows(
+    transcript_items: List[Dict[str, Any]],
+    classified_windows: List[Dict[str, Any]],
+    plan: List[Any],
+    min_section_sec: float = 30.0,
+    force_all_sections: bool = True,
+    callback: Optional[Callable[[str], None]] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Третий шаг:
+    - сглаживает метки окон;
+    - ищет границы разделов;
+    - собирает текст каждого раздела;
+    - назначает title/start/end.
+    """
+    if not transcript_items:
+        return []
+
+    if not classified_windows:
+        return []
+
+    sections = _normalize_plan_sections(plan)
+
+    if not sections:
+        return []
+
+    n_sections = len(sections)
+
+    _emit(callback, "[summary] сглаживание последовательности разделов")
+
+    labels = decode_ordered_section_labels(
+        classified_windows=classified_windows,
+        n_sections=n_sections,
+        force_all_sections=force_all_sections,
+    )
+
+    boundary_items: List[int] = []
+
+    for i in range(len(classified_windows) - 1):
+        current_label = labels[i]
+        next_label = labels[i + 1]
+
+        if current_label != next_label:
+            boundary_items.append(int(classified_windows[i]["item_end"]))
+
+    _emit(callback, f"[summary] найдено границ разделов: {len(boundary_items)}")
+
+    segments = _segments_from_boundaries(
+        transcript_items=transcript_items,
+        boundary_items=boundary_items,
+    )
+
+    segments = merge_short_segments(
+        segments=segments,
+        min_section_sec=min_section_sec,
+    )
+
+    for segment in segments:
+        label = _dominant_label_for_segment(
+            segment=segment,
+            windows=classified_windows,
+            labels=labels,
+        )
+
+        label = max(0, min(label, n_sections - 1))
+
+        segment["section_idx"] = label
+        segment["title"] = sections[label]["title"]
+
+    for idx, segment in enumerate(segments, start=1):
+        segment["index"] = idx
+
+    _emit(callback, f"[summary] итоговых разделов: {len(segments)}")
+
+    return segments
 
 # =========================================================
 # 3. ГРУБАЯ СЕГМЕНТАЦИЯ ПО ОКНАМ
@@ -1063,6 +1799,56 @@ def attach_frames_to_segments(
     return segments
 
 
+def attach_all_keyframes_by_time(
+    segments: List[Dict[str, Any]],
+    frames: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """
+    Строго распределяет все ключевые кадры по разделам.
+    Каждый кадр попадает в тот раздел, внутри временного интервала которого
+    находится frame["time"].
+
+    Результат кладётся в segment["all_keyframes"].
+    """
+    if not segments:
+        return segments
+
+    for segment in segments:
+        segment["all_keyframes"] = []
+
+    for frame in frames:
+        frame_time = float(frame["time"])
+
+        best_segment = None
+
+        for i, segment in enumerate(segments):
+            start = float(segment["start"])
+            end = float(segment["end"])
+
+            is_last = i == len(segments) - 1
+
+            if start <= frame_time < end or (is_last and start <= frame_time <= end):
+                best_segment = segment
+                break
+
+        # Если кадр немного выпал из-за неточной границы,
+        # прикрепляем к ближайшему разделу.
+        if best_segment is None:
+            best_segment = min(
+                segments,
+                key=lambda seg: min(
+                    abs(frame_time - float(seg["start"])),
+                    abs(frame_time - float(seg["end"])),
+                )
+            )
+
+        best_segment["all_keyframes"].append(frame)
+
+    for segment in segments:
+        segment["all_keyframes"].sort(key=lambda x: float(x["time"]))
+
+    return segments
+
 # =========================================================
 # 6. СУММАРИЗАЦИЯ РАЗДЕЛОВ
 # =========================================================
@@ -1110,44 +1896,6 @@ def _compose_segment_source_text(segment: Dict[str, Any]) -> str:
         parts.append("ТЕКСТ СО СЛАЙДОВ / ДОСКИ:\n" + "\n\n".join(ocr_parts))
 
     return "\n\n".join(parts).strip()
-
-
-# def summarize_segment(
-#     segment: Dict[str, Any],
-#     model: str | None = None,
-#     min_chars_for_llm: int = 220,
-# ) -> str:
-#     source_text = _compose_segment_source_text(segment)
-
-#     if not source_text:
-#         return "- Для этого раздела не удалось получить текст."
-
-#     if len(source_text) < min_chars_for_llm:
-#         return _fallback_summary(source_text)
-
-#     prompt = (
-#         "Сделай конспект одного тематического раздела видеолекции.\n\n"
-#         "Требования:\n"
-#         "- 3-6 коротких пунктов;\n"
-#         "- по-русски;\n"
-#         "- не добавляй факты от себя;\n"
-#         "- сохрани важные термины, определения, числа, формулы и обозначения;\n"
-#         "- если OCR шумный, игнорируй мусор;\n"
-#         "- если текст со слайда важен, включи его в конспект;\n"
-#         "- не пиши вводные фразы вроде 'в этом разделе рассказывается'.\n\n"
-#         "Формат ответа: markdown-список.\n\n"
-#         f"{source_text}"
-#     )
-
-#     try:
-#         summary = summarize_with_llm(prompt, model=model).strip()
-#         if summary:
-#             return summary
-#     except Exception:
-#         pass
-
-#     return _fallback_summary(source_text)
-
 
 def summarize_segment(
     segment: Dict[str, Any],
@@ -1348,6 +2096,7 @@ def build_multimodal_summary(
     title: str = "Конспект лекции",
     include_ocr: bool = True,
     min_chars_for_llm: int = 220,
+    USE_OCR: bool = False,
     callback: Optional[Callable[[str], None]] = None,
 ) -> Tuple[Path, List[Dict[str, Any]]]:
     transcript_path = Path(transcript_path)
@@ -1356,9 +2105,11 @@ def build_multimodal_summary(
 
     _emit(callback, "[summary] чтение транскрипта")
     transcript_items = parse_transcript(transcript_path)
-
-    _emit(callback, "[summary] чтение OCR")
-    ocr_map = load_ocr_map(ocr_dir)
+    if USE_OCR:
+        _emit(callback, "[summary] чтение OCR")
+        ocr_map = load_ocr_map(ocr_dir)
+    else:
+        ocr_map = {}
 
     _emit(callback, "[summary] подготовка кадров")
     frames = normalize_frames(frame_paths=frame_paths, keyframes=keyframes)
@@ -1390,11 +2141,14 @@ def build_multimodal_summary(
     total_duration_sec = max(float(item["end"]) for item in transcript_items)
     _emit(callback, f"[summary] длительность лекции по транскрипту: {_format_ts(total_duration_sec)}")
 
-    plan_titles = build_lecture_plan(
+    plan = build_lecture_plan(
         transcript_items=transcript_items,
         model=model,
         callback=callback,
+        use_llm=True,
     )
+    
+    plan_titles = [item["title"] for item in plan]
 
     _emit(callback, "[summary] разбиение транскрипта на текстовые окна")
     windows = build_text_windows(
@@ -1405,42 +2159,47 @@ def build_multimodal_summary(
         max_chars=1400,
     )
 
+        
+    classified_windows = classify_text_windows_by_plan(
+        transcript_items=transcript_items,
+        windows=windows,
+        plan=plan,
+        min_split_sec=10.0,
+        callback=callback,
+    )
     _emit(callback, f"[summary] окон текста: {len(windows)}")
 
-    _emit(callback, "[summary] грубая тематическая сегментация")
-    segments = rough_segment_transcript(
+    segments = build_segments_from_classified_windows(
         transcript_items=transcript_items,
-        windows=windows,
-        plan_titles=plan_titles,
+        classified_windows=classified_windows,
+        plan=plan,
         min_section_sec=30.0,
-        max_section_sec=300.0,
-    )
-
-    _emit(callback, f"[summary] грубых разделов: {len(segments)}")
-
-    _emit(callback, "[summary] уточнение границ разделов с помощью LLM")
-    segments = refine_boundaries_with_llm(
-        transcript_items=transcript_items,
-        segments=segments,
-        windows=windows,
-        plan_titles=plan_titles,
-        model=model,
+        force_all_sections=True,
         callback=callback,
-        min_section_sec=30.0,
-        search_radius_sec=70.0,
     )
-
-    segments = assign_titles_to_segments(segments, plan_titles)
-
-    _emit(callback, f"[summary] итоговых разделов: {len(segments)}")
-
+    
+    # Все ключевые кадры по строгому таймингу.
+    segments = attach_all_keyframes_by_time(
+        segments=segments,
+        frames=frames,
+    )
+   
     _emit(callback, "[summary] подбор кадров по таймингу и смысловой близости")
+    # Лучшие кадры для отображения в конспекте.
     segments = attach_frames_to_segments(
         segments=segments,
         frames=frames,
         ocr_map=ocr_map,
         time_margin_sec=18.0,
     )
+    
+    for segment in segments:
+        print(
+            f"Раздел {segment['index']}: {segment['title']} | "
+            f"{_format_ts(segment['start'])}–{_format_ts(segment['end'])} | "
+            f"keyframes={len(segment.get('all_keyframes') or [])} | "
+            f"selected={len(segment.get('frames') or [])}"
+        )
 
     _emit(callback, "[summary] суммаризация разделов")
     summarize_segments(
@@ -1462,3 +2221,4 @@ def build_multimodal_summary(
     out_path.write_text(markdown, encoding="utf-8")
 
     return out_path, segments
+
