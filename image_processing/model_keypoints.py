@@ -11,13 +11,13 @@ import tensorflow as tf
 
 from utils import _emit
 
-from .detect_slide.slide_bbox_common import (
+from .detect_slide_with_model.slide_bbox_common import (
     load_trained_model,
     denormalize_xywh,
     clip_boxes_xywh_np,
 )
 
-from .detect_slide.refine_bbox import (
+from .detect_slide_with_model.refine_bbox import (
     detect_presentation_surface,
     bbox_xywh_to_quad,
     order_quad_pts,

@@ -11,10 +11,9 @@ from PyQt6.QtCore import QRunnable
 
 import text_processing.audio as audio
 from image_processing.OCR import run_ocr
-from text_processing.LLMsummary import save_summary, summarize_with_llm
 from image_processing.detect_ROI_with_metrics.content_selector import extract_content_keyframes
 # from image_processing.model_keypoints import detect_model_keypoints_for_images, detect_model_slide_keypoints
-from image_processing.keypoints_roi import detect_keypoints_for_images, detect_slide_keypoints
+from image_processing.keypoints_roi import detect_keypoints_for_images
 from utils import crop_frames_by_keypoints
 
 
@@ -208,7 +207,7 @@ class Main(QRunnable):
         import subprocess
         import sys
 
-        worker_script = Path(__file__).resolve().parent / "transcribe_worker.py"
+        worker_script = Path(__file__).resolve().parent / "text_processing" / "transcribe_worker.py"
 
         self.print_signal.result.emit("[transcribe] starting subprocess")
 

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Избранное{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div><h1>Избранное</h1></div>
+</header>
+<section>
+    {% include 'summaries/includes/note_filters.html' %}
+    {% include 'summaries/includes/note_grid.html' with favorite_destination='favorites' empty_title='В избранном пока пусто' empty_text='Отметьте нужный конспект звездой в личной библиотеке.' show_upload_action=False %}
+</section>
+{% endblock %}

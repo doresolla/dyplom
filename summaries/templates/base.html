@@ -1,69 +1,57 @@
+{% load static %}
 <!doctype html>
 <html lang="ru">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Конспекты видеолекций{% endblock %}</title>
-    <style>
-        :root { --bg: #f6f7fb; --card: #fff; --text: #182033; --muted: #6b7280; --accent: #2f6fed; --bad: #b91c1c; --ok: #047857; --line: #e5e7eb; }
-        * { box-sizing: border-box; }
-        body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: var(--bg); color: var(--text); }
-        a { color: var(--accent); text-decoration: none; }
-        .container { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
-        header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
-        nav { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-        .brand { font-weight: 800; font-size: 18px; }
-        .nav-links { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .btn, button { display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 10px; padding: 10px 14px; background: var(--accent); color: #fff; font-weight: 650; cursor: pointer; }
-        .btn.secondary { background: #eef2ff; color: var(--accent); }
-        .btn.danger { background: #fee2e2; color: var(--bad); }
-        main { padding: 28px 0 48px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-        .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04); }
-        .muted { color: var(--muted); }
-        .status { display: inline-flex; border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; background: #f3f4f6; color: #374151; }
-        .status.done { background: #dcfce7; color: var(--ok); }
-        .status.error { background: #fee2e2; color: var(--bad); }
-        .status.processing, .status.queued { background: #dbeafe; color: #1d4ed8; }
-        .progress { height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
-        .progress > span { display: block; height: 100%; background: var(--accent); }
-        .form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-        .field { margin: 14px 0; }
-        .messages { margin-bottom: 18px; }
-        .message { padding: 12px 14px; border-radius: 12px; background: #ecfeff; border: 1px solid #a5f3fc; }
-        .summary-content { line-height: 1.65; }
-        .summary-content img { max-width: 100%; border-radius: 12px; }
-        .pdf-viewer { width: 100%; height: min(78vh, 920px); min-height: 640px; border: 1px solid var(--line); border-radius: 14px; background: #f9fafb; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-        .topbar-form { display: inline; }
-    </style>
+    <title>{% block title %}LectureNote AI{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
-<header>
-    <nav class="container">
-        <a class="brand" href="{% url 'public_notes' %}">Мультимодальные конспекты</a>
-        <div class="nav-links">
-            <a href="{% url 'public_notes' %}">Общая база</a>
-            {% if user.is_authenticated %}
-                <a href="{% url 'dashboard' %}">Личный кабинет</a>
-                <a href="{% url 'upload_note' %}">Загрузить видео</a>
-                <a href="{% url 'notifications' %}">Уведомления{% if unread_notifications_count %} ({{ unread_notifications_count }}){% endif %}</a>
-                <form class="topbar-form" method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn secondary" type="submit">Выйти</button></form>
-            {% else %}
-                <a class="btn secondary" href="{% url 'login' %}">Войти</a>
-                <a class="btn" href="{% url 'register' %}">Регистрация</a>
-            {% endif %}
+{% if user.is_authenticated %}
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="auth-brand" href="{% url 'login' %}"><span class="brand-mark">L</span> LectureNote AI</a>
+        <div class="nav-label">БИБЛИОТЕКА</div>
+        <nav class="nav-list" aria-label="Основная навигация">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span class="nav-icon">▦</span><span class="nav-text">Мои конспекты</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'favorites' %}active{% endif %}" href="{% url 'favorites' %}"><span class="nav-icon">★</span><span class="nav-text">Избранное</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'upload_note' %}active{% endif %}" href="{% url 'upload_note' %}"><span class="nav-icon">＋</span><span class="nav-text">Загрузить видео</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'notifications' %}"><span class="nav-icon">◔</span><span class="nav-text">Уведомления</span>{% if unread_notifications_count %}<span class="nav-count">{{ unread_notifications_count }}</span>{% endif %}</a>
+        </nav>
+        <div class="nav-label" style="margin-top:28px;">АККАУНТ</div>
+        <nav class="nav-list">
+            <a class="nav-link {% if request.resolver_match.url_name == 'account_profile' or request.resolver_match.url_name == 'password_change' %}active{% endif %}" href="{% url 'account_profile' %}"><span class="nav-icon">⚙</span><span class="nav-text">Настройки</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-chip"><span class="avatar">{{ user.username|first|upper }}</span><div><strong>{{ user.username }}</strong><span>{{ user.email|default:'Email не задан' }}</span></div></div>
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="nav-link logout-button" type="submit"><span class="nav-icon">↗</span><span class="nav-text logout-text">Выйти</span></button></form>
         </div>
-    </nav>
-</header>
-<main class="container">
-    {% if messages %}
-        <div class="messages">
-            {% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}
+    </aside>
+    <div class="workspace">
+        <main class="page">
+            {% for message in messages %}<div class="alert alert-{{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+<div class="auth-shell">
+    <section class="auth-promo">
+        <a class="auth-brand" href="{% url 'login' %}"><span class="brand-mark">L</span> LectureNote AI</a>
+        <div>
+            <h1>Конспект лекции с текстом и слайдами</h1>
+            <p>Загрузите видео, а система выделит содержательные кадры, распознает речь и сформирует PDF-конспект через LLM.</p>
+            <div class="auth-feature"><i>✓</i><span>Ваши конспекты будут доступны только вам.</span></div>
+            <div class="auth-feature"><i>✓</i><span>Фоновая обработка и уведомление о готовности.</span></div>
         </div>
-    {% endif %}
-    {% block content %}{% endblock %}
-</main>
+        <span class="small">Автоматическое конспектирование видеолекций</span>
+    </section>
+    <main class="auth-content"><div class="auth-card">{% for message in messages %}<div class="alert alert-{{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}{% block auth_content %}{% endblock %}</div></main>
+</div>
+{% endif %}
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

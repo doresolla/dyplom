@@ -1,33 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}Регистрация{% endblock %}
-{% block content %}
-<div class="card" style="max-width:560px; margin:0 auto;">
-    <h1>Регистрация</h1>
-    <p class="muted">Создайте аккаунт, чтобы загружать видеолекции, получать уведомления и хранить свои конспекты в личном кабинете.</p>
-
+{% block title %}Регистрация · LectureNote AI{% endblock %}
+{% block auth_content %}
+<div class="card">
+    <h1>Создать аккаунт</h1>
     <form method="post" novalidate>
         {% csrf_token %}
-
-        {% if form.non_field_errors %}
-            <div class="message" style="background:#fee2e2; border-color:#fecaca; color:#991b1b;">
-                {{ form.non_field_errors }}
-            </div>
-        {% endif %}
-
         {% for field in form %}
             <div class="field">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-                {% for error in field.errors %}
-                    <div style="color:#b91c1c; margin-top:4px;">{{ error }}</div>
-                {% endfor %}
+                {% if 'password' in field.name %}<div class="password-wrap">{{ field }}<button class="password-toggle" type="button" data-password-toggle="{{ field.id_for_label }}" aria-label="Показать пароль">◉</button></div>{% else %}{{ field }}{% endif %}
+                {% if field.help_text %}<span class="field-help">{{ field.help_text|safe }}</span>{% endif %}
+                {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
         {% endfor %}
-
-        <button type="submit">Создать аккаунт</button>
+        {% for error in form.non_field_errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+        <button class="btn" type="submit" style="width:100%;">Создать аккаунт</button>
     </form>
-
-    <p class="muted" style="margin-top:16px;">Уже есть аккаунт? <a href="{% url 'login' %}">Войти</a></p>
+    <p class="muted small" style="margin:22px 0 0; text-align:center;">Уже зарегистрированы? <a href="{% url 'login' %}">Войти</a></p>
 </div>
 {% endblock %}

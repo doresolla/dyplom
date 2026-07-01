@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Удалить конспект{% endblock %}
+{% block content %}
+<section class="card danger-zone confirm-card">
+    <h1>Удалить конспект?</h1>
+    <p>Конспект <strong>«{{ note.title }}»</strong>, PDF, markdown, транскрипция, отзыв и журнал обработки будут удалены без возможности восстановления.</p>
+    <p class="muted small">Исходное видео уже удаляется автоматически после завершения обработки или ошибки.</p>
+    <div class="actions-row" style="margin-top:26px;">
+        <form method="post">{% csrf_token %}<button class="btn btn-danger" type="submit">Да, удалить</button></form>
+        <a class="btn btn-secondary" href="{% url 'note_detail' note.pk %}">Отмена</a>
+    </div>
+</section>
+{% endblock %}

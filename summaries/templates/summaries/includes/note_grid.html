@@ -1,0 +1,32 @@
+<div class="note-grid">
+{% for note in notes %}
+    <article class="card note-card">
+        <div class="note-top">
+            <a class="note-title" href="{% url 'note_detail' note.pk %}">{{ note.title }}</a>
+            <form class="inline-form" method="post" action="{% url 'toggle_favorite' note.pk %}">
+                {% csrf_token %}<input type="hidden" name="destination" value="{{ favorite_destination }}">
+                <button class="star-button {% if note.is_favorite %}active{% endif %}" type="submit" title="{% if note.is_favorite %}Убрать из избранного{% else %}Добавить в избранное{% endif %}">{% if note.is_favorite %}★{% else %}☆{% endif %}</button>
+            </form>
+        </div>
+        <div class="tag-list">
+            {% for tag in note.tags.all %}<span class="tag">{{ tag.name }}</span>{% empty %}<span class="small muted">Без тегов</span>{% endfor %}
+        </div>
+        <div class="meta-line"><span class="status {{ note.status }}">{{ note.get_status_display }}</span><span>{{ note.created_at|date:'d.m.Y · H:i' }}</span></div>
+        <div>
+            <div class="progress"><span style="width: {{ note.progress }}%;"></span></div>
+            <div class="small muted" style="margin-top:5px;">{{ note.status_message|default:'Ожидает обработки' }} · {{ note.progress }}%</div>
+        </div>
+        <div class="note-actions">
+            <a class="btn btn-sm btn-secondary" href="{% url 'note_detail' note.pk %}">{% if note.status == 'done' %}Смотреть{% else %}Подробнее{% endif %}</a>
+            {% if note.status == 'done' and note.summary_pdf_file %}<a class="btn btn-sm btn-ghost" href="{% url 'note_file' note.pk 'pdf' %}?download=1">Скачать PDF</a>{% endif %}
+        </div>
+    </article>
+{% empty %}
+    <div class="card empty-state" style="grid-column:1/-1;">
+        <div class="empty-icon">▧</div>
+        <h2>{{ empty_title }}</h2>
+        <p class="muted">{{ empty_text }}</p>
+        {% if show_upload_action %}<a class="btn" href="{% url 'upload_note' %}">Загрузить лекцию</a>{% endif %}
+    </div>
+{% endfor %}
+</div>

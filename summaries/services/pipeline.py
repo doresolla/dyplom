@@ -71,8 +71,13 @@ def run_pipeline_for_note(note_id: int, celery_task: Any | None = None) -> dict[
     прогресс в БД, а запускается через Celery.
     """
     logger = DbProgressLogger(note_id=note_id, celery_task=celery_task)
+    video_paths_to_delete: set[Path] = set()
 
     note = LectureNote.objects.select_related('owner').get(pk=note_id)
+    uploaded_video_path = _get_uploaded_video_path(note)
+    if uploaded_video_path is not None:
+        video_paths_to_delete.add(uploaded_video_path)
+
     LectureNote.objects.filter(pk=note_id).update(
         status=LectureNote.Status.PROCESSING,
         progress=1,
@@ -84,7 +89,9 @@ def run_pipeline_for_note(note_id: int, celery_task: Any | None = None) -> dict[
         with _pipeline_runtime_context() as pipeline_root:
             modules = _import_pipeline_modules()
 
-            source_video = Path(note.video_file.path).resolve()
+            if uploaded_video_path is None:
+                raise RuntimeError('Исходный видеофайл не найден в записи конспекта.')
+            source_video = uploaded_video_path
             work_root = Path(settings.MEDIA_ROOT).resolve() / 'runs' / str(note.owner_id)
             run_dir = work_root / f'note_{note.id}'
             run_dir.mkdir(parents=True, exist_ok=True)
@@ -99,6 +106,8 @@ def run_pipeline_for_note(note_id: int, celery_task: Any | None = None) -> dict[
 
             logger.emit('Статус: 1/7 Разделение аудио и видео', 5)
             assets = modules['audio'].split_audio_video(source_video, run_dir)
+            local_video_path = Path(assets.local_video).resolve()
+            video_paths_to_delete.add(local_video_path)
 
             logger.emit('Статус: 2/7 Распознавание голоса', 15)
             transcript_path = run_dir / 'transcript.txt'
@@ -201,6 +210,51 @@ def run_pipeline_for_note(note_id: int, celery_task: Any | None = None) -> dict[
         logger.emit(f'Ошибка: {message}')
         _notify_error(note_id, message)
         raise
+    finally:
+        _cleanup_video_files(note_id, video_paths_to_delete)
+
+
+def _get_uploaded_video_path(note: LectureNote) -> Path | None:
+    if not note.video_file:
+        return None
+    try:
+        path = Path(note.video_file.path).resolve()
+    except Exception:
+        return None
+    return path
+
+
+def _cleanup_video_files(note_id: int, paths: set[Path]) -> None:
+    """Удаляет исходные/временные видеофайлы после обработки и очищает FileField.
+
+    Функция вызывается в finally, поэтому не должна ломать основной результат задачи.
+    """
+    video_suffixes = {'.mp4', '.mkv', '.avi', '.mov', '.webm', '.m4v'}
+    deleted: list[str] = []
+    errors: list[str] = []
+
+    for path in sorted({p.resolve() for p in paths if p is not None}):
+        if path.suffix.lower() not in video_suffixes:
+            continue
+        try:
+            if path.exists() and path.is_file():
+                path.unlink()
+                deleted.append(str(path))
+        except Exception as exc:
+            errors.append(f'{path}: {exc}')
+
+    LectureNote.objects.filter(pk=note_id).update(video_file='')
+
+    if deleted:
+        ProcessingLog.objects.create(
+            note_id=note_id,
+            message='Исходные/временные видеофайлы удалены после обработки:\n' + '\n'.join(deleted),
+        )
+    if errors:
+        ProcessingLog.objects.create(
+            note_id=note_id,
+            message='Не удалось удалить часть видеофайлов:\n' + '\n'.join(errors),
+        )
 
 
 def _prepare_python_path() -> Path:
@@ -248,7 +302,7 @@ def _import_pipeline_modules() -> dict[str, Any]:
 
 
 def _transcribe(audio_path: Path, out_path: Path, logger: DbProgressLogger, pipeline_root: Path) -> None:
-    worker_script = pipeline_root / 'text_processing' / 'transcribe_worker.py'
+    worker_script = pipeline_root / 'transcribe_worker.py'
     if not worker_script.exists():
         raise RuntimeError(f'Не найден transcribe_worker.py: {worker_script}')
 

@@ -3,9 +3,33 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Avg
 from django.urls import reverse
 from django.utils import timezone
+
+
+class Tag(models.Model):
+    """Справочник тегов. Наполняется администратором и используется в личных библиотеках."""
+
+    name = models.CharField('Название тега', max_length=80, unique=True)
+    slug = models.SlugField('Slug', max_length=100, unique=True)
+    description = models.CharField('Описание', max_length=255, blank=True)
+    is_active = models.BooleanField('Доступен пользователям', default=True)
+    created_at = models.DateTimeField('Создан', default=timezone.now)
+
+    class Meta:
+        verbose_name = 'Тег'
+        verbose_name_plural = 'Теги'
+        ordering = ['name']
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class LectureNoteQuerySet(models.QuerySet):
+    def owned_by(self, user):
+        if not getattr(user, 'is_authenticated', False):
+            return self.none()
+        return self.filter(owner=user)
 
 
 class LectureNote(models.Model):
@@ -26,7 +50,10 @@ class LectureNote(models.Model):
         verbose_name='Владелец',
     )
     title = models.CharField('Название', max_length=255)
-    video_file = models.FileField('Видеофайл', upload_to='videos/%Y/%m/%d/')
+    tags = models.ManyToManyField(Tag, blank=True, related_name='lecture_notes', verbose_name='Теги')
+    is_favorite = models.BooleanField('В избранном', default=False)
+    video_file_original_name = models.CharField('Исходное имя видеофайла', max_length=255, blank=True)
+    video_file = models.FileField('Видеофайл', upload_to='videos/%Y/%m/%d/', blank=True)
     summary_file = models.FileField('Markdown-файл конспекта', upload_to='summaries/%Y/%m/%d/', blank=True)
     summary_pdf_file = models.FileField('PDF-файл конспекта', upload_to='summaries/%Y/%m/%d/', blank=True)
     summary_text = models.TextField('Текст конспекта', blank=True)
@@ -38,30 +65,26 @@ class LectureNote(models.Model):
     error_message = models.TextField('Текст ошибки', blank=True)
     result_dir = models.CharField('Папка результата', max_length=1000, blank=True)
     pipeline_meta = models.JSONField('Метаданные пайплайна', default=dict, blank=True)
-    is_public = models.BooleanField('Доступен всем', default=True)
     created_at = models.DateTimeField('Создан', default=timezone.now)
-    updated_at = models.DateTimeField('Обновлен', auto_now=True)
-    completed_at = models.DateTimeField('Завершен', null=True, blank=True)
+    updated_at = models.DateTimeField('Обновлён', auto_now=True)
+    completed_at = models.DateTimeField('Завершён', null=True, blank=True)
+
+    objects = LectureNoteQuerySet.as_manager()
 
     class Meta:
         verbose_name = 'Конспект'
         verbose_name_plural = 'Конспекты'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['owner', '-created_at'], name='note_owner_created_idx'),
+            models.Index(fields=['owner', 'is_favorite'], name='note_owner_fav_idx'),
+        ]
 
     def __str__(self) -> str:
         return self.title
 
     def get_absolute_url(self):
         return reverse('note_detail', kwargs={'pk': self.pk})
-
-    @property
-    def average_rating(self) -> float | None:
-        value = self.ratings.aggregate(avg=Avg('score'))['avg']
-        return round(value, 2) if value is not None else None
-
-    @property
-    def ratings_count(self) -> int:
-        return self.ratings.count()
 
 
 class ProcessingLog(models.Model):
@@ -91,17 +114,20 @@ class Notification(models.Model):
         return self.title
 
 
-class Rating(models.Model):
-    note = models.ForeignKey(LectureNote, on_delete=models.CASCADE, related_name='ratings')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='summary_ratings')
-    score = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
-    comment = models.TextField(blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
+class Review(models.Model):
+    """Личный отзыв владельца о качестве сформированного для него конспекта."""
+
+    note = models.OneToOneField(LectureNote, on_delete=models.CASCADE, related_name='review', verbose_name='Конспект')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='note_reviews', verbose_name='Пользователь')
+    score = models.PositiveSmallIntegerField('Оценка', validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField('Комментарий', blank=True)
+    created_at = models.DateTimeField('Создан', default=timezone.now)
+    updated_at = models.DateTimeField('Обновлён', auto_now=True)
 
     class Meta:
-        unique_together = ('note', 'user')
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         ordering = ['-updated_at']
 
     def __str__(self) -> str:
-        return f'{self.note_id}: {self.score}'
+        return f'{self.note.title}: {self.score}/5'

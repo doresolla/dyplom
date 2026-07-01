@@ -1,44 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}Личный кабинет{% endblock %}
+{% block title %}Моя библиотека{% endblock %}
 {% block content %}
-<div class="card" style="display:flex; justify-content:space-between; gap:16px; align-items:center; flex-wrap:wrap;">
-    <div>
-        <h1>Личный кабинет</h1>
-        <p class="muted">Ваши загруженные видеолекции, статусы обработки и готовые конспекты.</p>
-    </div>
-    <a class="btn" href="{% url 'upload_note' %}">Загрузить видео</a>
-</div>
-
-<div style="margin-top:18px;" class="card">
-    <table>
-        <thead>
-        <tr><th>Конспект</th><th>Статус</th><th>Прогресс</th><th>Оценка</th><th>Действия</th></tr>
-        </thead>
-        <tbody>
-        {% for note in notes %}
-            <tr>
-                <td>
-                    <strong><a href="{% url 'note_detail' note.pk %}">{{ note.title }}</a></strong><br>
-                    <span class="muted">{{ note.created_at|date:'d.m.Y H:i' }}</span>
-                </td>
-                <td><span class="status {{ note.status }}">{{ note.get_status_display }}</span><br><span class="muted">{{ note.status_message }}</span></td>
-                <td><div class="progress"><span style="width: {{ note.progress }}%"></span></div><span class="muted">{{ note.progress }}%</span></td>
-                <td>{% if note.avg_score %}{{ note.avg_score|floatformat:2 }}{% else %}—{% endif %}</td>
-                <td>
-                    <a class="btn secondary" href="{% url 'note_detail' note.pk %}">{% if note.status == 'done' %}Открыть конспект{% else %}Открыть карточку{% endif %}</a>
-                    <div style="margin-top:8px;"><a href="{% url 'processing_logs' note.pk %}">Логи обработки</a></div>
-                    {% if note.status == 'done' and note.summary_pdf_file %}
-                        <div style="margin-top:8px;"><a href="{{ note.summary_pdf_file.url }}" target="_blank">Открыть PDF</a></div>
-                    {% endif %}
-                    {% if note.status == 'done' and note.summary_file %}
-                        <div style="margin-top:8px;"><a href="{{ note.summary_file.url }}">Скачать markdown</a></div>
-                    {% endif %}
-                </td>
-            </tr>
-        {% empty %}
-            <tr><td colspan="5">Вы еще не загружали видео.</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</div>
+<header class="page-header">
+    <div><h1>Мои конспекты</h1><p class="muted">Личная библиотека материалов, сформированных из ваших видеолекций.</p></div>
+</header>
+<section class="stat-grid" aria-label="Статистика библиотеки">
+    <div class="stat-card"><span class="stat-label">Все конспекты</span><span class="stat-value">{{ stats.total }}</span></div>
+    <div class="stat-card"><span class="stat-label">Готово</span><span class="stat-value">{{ stats.ready }}</span></div>
+    <div class="stat-card"><span class="stat-label">Обрабатываются</span><span class="stat-value">{{ stats.processing }}</span></div>
+    <div class="stat-card"><span class="stat-label">Избранное</span><span class="stat-value">{{ stats.favorite }}</span></div>
+</section>
+<section>
+    {% include 'summaries/includes/note_filters.html' %}
+    {% include 'summaries/includes/note_grid.html' with favorite_destination='dashboard' empty_title='Пока нет конспектов' empty_text='Загрузите видео, чтобы сформировать первый мультимодальный конспект.' show_upload_action=True %}
+</section>
 {% endblock %}
