@@ -1,0 +1,8 @@
+<form class="filterbar" method="get">
+    <input class="form-control" type="search" name="q" value="{{ query }}" placeholder="Поиск по названию или тегу">
+    <select class="form-control" name="tag">
+        <option value="">Все теги</option>
+        {% for tag in available_tags %}<option value="{{ tag.id }}" {% if selected_tag_id == tag.id|stringformat:'s' %}selected{% endif %}>{{ tag.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-secondary" type="submit">Найти</button>
+</form>

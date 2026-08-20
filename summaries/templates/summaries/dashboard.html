@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Моя библиотека{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div><h1>Мои конспекты</h1><p class="muted">Личная библиотека материалов, сформированных из ваших видеолекций.</p></div>
+</header>
+<section class="stat-grid" aria-label="Статистика библиотеки">
+    <div class="stat-card"><span class="stat-label">Все конспекты</span><span class="stat-value">{{ stats.total }}</span></div>
+    <div class="stat-card"><span class="stat-label">Готово</span><span class="stat-value">{{ stats.ready }}</span></div>
+    <div class="stat-card"><span class="stat-label">Обрабатываются</span><span class="stat-value">{{ stats.processing }}</span></div>
+    <div class="stat-card"><span class="stat-label">Избранное</span><span class="stat-value">{{ stats.favorite }}</span></div>
+</section>
+<section>
+    {% include 'summaries/includes/note_filters.html' %}
+    {% include 'summaries/includes/note_grid.html' with favorite_destination='dashboard' empty_title='Пока нет конспектов' empty_text='Загрузите видео, чтобы сформировать первый мультимодальный конспект.' show_upload_action=True %}
+</section>
+{% endblock %}

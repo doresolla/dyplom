@@ -1,0 +1,13 @@
+{
+  "video_path": "C:\\Users\\dondu\\PycharmProjects\\automatic_conspect33\\runs\\math\\math.mp4",
+  "frame_width": 1280,
+  "frame_height": 720,
+  "selected_time_sec": 120.0,
+  "selected_frame_idx": 3600,
+  "roi": [
+    43,
+    186,
+    1267,
+    669
+  ]
+}

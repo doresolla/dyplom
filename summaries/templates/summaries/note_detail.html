@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}{{ note.title }}{% endblock %}
+{% block extra_head %}{% if note.status == 'queued' or note.status == 'processing' %}<meta http-equiv="refresh" content="12">{% endif %}{% endblock %}
+{% block content %}
+<section class="card note-hero">
+    <div class="note-top">
+        <div>
+            <div class="meta-line" style="margin-bottom:10px;"><span class="status {{ note.status }}">{{ note.get_status_display }}</span><span>{{ note.created_at|date:'d.m.Y · H:i' }}</span></div>
+            <h1>{{ note.title }}</h1>
+            <p class="muted">{{ note.status_message|default:'Информация о процессе будет отображаться здесь.' }}</p>
+        </div>
+        <form method="post" action="{% url 'toggle_favorite' note.pk %}">{% csrf_token %}<button class="star-button {% if note.is_favorite %}active{% endif %}" type="submit" aria-label="Избранное">{% if note.is_favorite %}★{% else %}☆{% endif %}</button></form>
+    </div>
+    <div class="progress"><span style="width: {{ note.progress }}%;"></span></div>
+    <div class="note-hero-actions">
+        {% if note.summary_pdf_file %}<a class="btn btn-secondary" href="{% url 'note_file' note.pk 'pdf' %}?download=1">↓ Скачать PDF</a>{% endif %}
+        {% if note.summary_file %}<a class="btn btn-secondary" href="{% url 'note_file' note.pk 'markdown' %}">↓ Markdown</a>{% endif %}
+        {% if note.transcript_file %}<a class="btn btn-secondary" href="{% url 'note_file' note.pk 'transcript' %}">↓ Транскрипция</a>{% endif %}
+        <a class="btn btn-ghost" href="{% url 'processing_logs' note.pk %}">Логи обработки</a>
+        {% if note.status == 'done' or note.status == 'error' %}<a class="btn btn-danger" href="{% url 'delete_note' note.pk %}">Удалить</a>{% endif %}
+    </div>
+</section>
+
+<div class="grid grid-detail">
+    <aside class="detail-side">
+        <section class="card">
+            <h2>Теги</h2>
+            <p class="small muted">Выберите категории из списка администратора.</p>
+            <form method="post" action="{% url 'update_note_tags' note.pk %}">
+                {% csrf_token %}
+                {{ tags_form.tags }}
+                {% for error in tags_form.tags.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                <button class="btn btn-sm btn-secondary" style="margin-top:15px;" type="submit">Сохранить теги</button>
+            </form>
+        </section>
+        {% if note.status == 'done' %}
+        <section class="card">
+            <h2>Мой отзыв</h2>
+            {% if review %}
+                <div class="review-display">
+                    <div class="rating" aria-label="Оценка {{ review.score }} из 5">{% if review.score >= 1 %}★{% endif %}{% if review.score >= 2 %}★{% endif %}{% if review.score >= 3 %}★{% endif %}{% if review.score >= 4 %}★{% endif %}{% if review.score >= 5 %}★{% endif %}</div>
+                    <p class="small" style="margin:8px 0 0;">{{ review.comment|default:'Без комментария' }}</p>
+                </div>
+            {% endif %}
+            <form method="post" action="{% url 'save_review' note.pk %}">
+                {% csrf_token %}
+                <div class="field"><label for="{{ review_form.score.id_for_label }}">Оценка</label>{{ review_form.score }}</div>
+                <div class="field"><label for="{{ review_form.comment.id_for_label }}">Комментарий</label>{{ review_form.comment }}</div>
+                <button class="btn btn-sm" type="submit">{% if review %}Обновить отзыв{% else %}Добавить отзыв{% endif %}</button>
+            </form>
+            {% if review %}
+            <form method="post" action="{% url 'delete_review' note.pk %}" data-confirm="Удалить ваш отзыв?" style="margin-top:10px;">
+                {% csrf_token %}<button class="btn btn-sm btn-danger" type="submit">Удалить отзыв</button>
+            </form>
+            {% endif %}
+        </section>
+        {% endif %}
+    </aside>
+    <section>
+        {% if note.status == 'done' %}
+            <div class="card pdf-card">
+                <div class="pdf-head"><div><h2 style="margin-bottom:3px;">Итоговый конспект</h2><span class="muted small">PDF с текстом и выбранными кадрами лекции</span></div></div>
+                {% if note.summary_pdf_file %}
+                    <iframe class="pdf-viewer" src="{% url 'note_file' note.pk 'pdf' %}#toolbar=1&navpanes=0" title="PDF-конспект: {{ note.title }}"></iframe>
+                {% else %}
+                    <div class="empty-state"><div class="empty-icon">⌛</div><h2>PDF ещё не готов</h2><p class="muted">Файл конспекта отсутствует. Посмотрите логи обработки.</p></div>
+                {% endif %}
+            </div>
+        {% elif note.status == 'error' %}
+            <div class="card danger-zone"><h2>Обработка завершилась ошибкой</h2><p class="muted">Видео уже удалено согласно политике хранения.</p><pre class="log-message">{{ note.error_message }}</pre></div>
+        {% else %}
+            <div class="card empty-state"><div class="empty-icon">◔</div><h2>Формируем конспект</h2><p class="muted">Страница автоматически обновится. Вы также получите уведомление после завершения.</p></div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

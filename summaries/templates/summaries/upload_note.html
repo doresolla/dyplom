@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Загрузить видеолекцию{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Загрузка видео</h1></div></header>
+<div class="grid grid-2">
+    <section class="card">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<span class="field-help">{{ field.help_text }}</span>{% endif %}
+                    {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+            <button class="btn" type="submit">Запустить обработку</button>
+        </form>
+    </section>
+    <aside class="card card-flat">
+        <h2>Как это работает</h2>
+        <p class="muted">После загрузки можно закрыть страницу и продолжить работу: процесс выполняется отдельным worker-процессом.</p>
+        <div class="auth-feature" style="color:var(--ink);"><i style="background:var(--primary-soft);">1</i><span>Распознавание речи и временных меток.</span></div>
+        <div class="auth-feature" style="color:var(--ink);"><i style="background:var(--teal-soft);">2</i><span>Отбор информативных кадров и OCR слайдов.</span></div>
+        <div class="auth-feature" style="color:var(--ink);"><i style="background:var(--amber-soft);">3</i><span>LLM формирует PDF-конспект с изображениями.</span></div>
+        <p class="small muted" style="margin-top:24px;">Загруженный видеофайл автоматически удаляется после обработки, включая случаи ошибки.</p>
+    </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<header class="page-header">
+    <div><h1>Уведомления</h1><p class="muted">События обработки ваших видеолекций.</p></div>
+    {% if notifications %}<form method="post">{% csrf_token %}<button class="btn btn-secondary" type="submit">Отметить прочитанными</button></form>{% endif %}
+</header>
+<div class="grid">
+{% for notification in notifications %}
+    <article class="card card-flat" style="border-left:4px solid {% if notification.is_read %}var(--line){% else %}var(--primary){% endif %};">
+        <div class="meta-line"><span>{{ notification.created_at|date:'d.m.Y · H:i' }}</span>{% if not notification.is_read %}<span class="tag">Новое</span>{% endif %}</div>
+        <h2 style="margin:8px 0 7px;">{{ notification.title }}</h2>
+        <p class="muted">{{ notification.message }}</p>
+        {% if notification.note %}<a class="btn btn-sm btn-secondary" href="{% url 'note_detail' notification.note.pk %}">Перейти к конспекту</a>{% endif %}
+    </article>
+{% empty %}
+    <div class="card empty-state"><div class="empty-icon">◔</div><h2>Уведомлений нет</h2><p class="muted">Здесь появятся сообщения о завершении обработки.</p></div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Регистрация · LectureNote AI{% endblock %}
+{% block auth_content %}
+<div class="card">
+    <h1>Создать аккаунт</h1>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {% if 'password' in field.name %}<div class="password-wrap">{{ field }}<button class="password-toggle" type="button" data-password-toggle="{{ field.id_for_label }}" aria-label="Показать пароль">◉</button></div>{% else %}{{ field }}{% endif %}
+                {% if field.help_text %}<span class="field-help">{{ field.help_text|safe }}</span>{% endif %}
+                {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+        {% endfor %}
+        {% for error in form.non_field_errors %}<div class="alert alert-error">{{ error }}</div>{% endfor %}
+        <button class="btn" type="submit" style="width:100%;">Создать аккаунт</button>
+    </form>
+    <p class="muted small" style="margin:22px 0 0; text-align:center;">Уже зарегистрированы? <a href="{% url 'login' %}">Войти</a></p>
+</div>
+{% endblock %}

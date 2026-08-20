@@ -1,0 +1,57 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}LectureNote AI{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="app-shell">
+    <aside class="sidebar">
+        <a class="auth-brand" href="{% url 'login' %}"><span class="brand-mark">L</span> LectureNote AI</a>
+        <div class="nav-label">БИБЛИОТЕКА</div>
+        <nav class="nav-list" aria-label="Основная навигация">
+            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><span class="nav-icon">▦</span><span class="nav-text">Мои конспекты</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'favorites' %}active{% endif %}" href="{% url 'favorites' %}"><span class="nav-icon">★</span><span class="nav-text">Избранное</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'upload_note' %}active{% endif %}" href="{% url 'upload_note' %}"><span class="nav-icon">＋</span><span class="nav-text">Загрузить видео</span></a>
+            <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'notifications' %}"><span class="nav-icon">◔</span><span class="nav-text">Уведомления</span>{% if unread_notifications_count %}<span class="nav-count">{{ unread_notifications_count }}</span>{% endif %}</a>
+        </nav>
+        <div class="nav-label" style="margin-top:28px;">АККАУНТ</div>
+        <nav class="nav-list">
+            <a class="nav-link {% if request.resolver_match.url_name == 'account_profile' or request.resolver_match.url_name == 'password_change' %}active{% endif %}" href="{% url 'account_profile' %}"><span class="nav-icon">⚙</span><span class="nav-text">Настройки</span></a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-chip"><span class="avatar">{{ user.username|first|upper }}</span><div><strong>{{ user.username }}</strong><span>{{ user.email|default:'Email не задан' }}</span></div></div>
+            <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="nav-link logout-button" type="submit"><span class="nav-icon">↗</span><span class="nav-text logout-text">Выйти</span></button></form>
+        </div>
+    </aside>
+    <div class="workspace">
+        <main class="page">
+            {% for message in messages %}<div class="alert alert-{{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+<div class="auth-shell">
+    <section class="auth-promo">
+        <a class="auth-brand" href="{% url 'login' %}"><span class="brand-mark">L</span> LectureNote AI</a>
+        <div>
+            <h1>Конспект лекции с текстом и слайдами</h1>
+            <p>Загрузите видео, а система выделит содержательные кадры, распознает речь и сформирует PDF-конспект через LLM.</p>
+            <div class="auth-feature"><i>✓</i><span>Ваши конспекты будут доступны только вам.</span></div>
+            <div class="auth-feature"><i>✓</i><span>Фоновая обработка и уведомление о готовности.</span></div>
+        </div>
+        <span class="small">Автоматическое конспектирование видеолекций</span>
+    </section>
+    <main class="auth-content"><div class="auth-card">{% for message in messages %}<div class="alert alert-{{ message.tags|default:'success' }}">{{ message }}</div>{% endfor %}{% block auth_content %}{% endblock %}</div></main>
+</div>
+{% endif %}
+<script src="{% static 'js/app.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>
